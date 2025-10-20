@@ -36,11 +36,6 @@ const Navbar = ({ onToggleSidebar, onToggleTheme, isDarkMode }) => {
               <SearchBox />
             </div>
             <div className="flex items-center justify-between gap-3 lg:justify-end">
-              {user ? (
-                <div className="hidden text-sm text-slate-600 dark:text-slate-300 lg:block">
-                  <span className="font-medium text-slate-900 dark:text-slate-100">{user.email}</span>
-                </div>
-              ) : null}
               <button
                 type="button"
                 onClick={onToggleTheme}
@@ -57,13 +52,37 @@ const Navbar = ({ onToggleSidebar, onToggleTheme, isDarkMode }) => {
                   </svg>
                 )}
               </button>
-              <button
-                type="button"
-                onClick={logout}
-                className="inline-flex items-center justify-center rounded-md border border-transparent bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring focus:ring-primary dark:bg-primary dark:hover:bg-primary/80"
-              >
-                Cerrar sesión
-              </button>
+              {user ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col text-right text-sm leading-tight">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{user.name || user.email}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{user.email}</span>
+                    </div>
+                    <div className="h-10 w-10 overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                      {user.picture ? (
+                        <img
+                          src={user.picture}
+                          alt={user.name || user.email}
+                          className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600 dark:text-slate-200">
+                          {(user.name || user.email || '?').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="inline-flex items-center justify-center rounded-md border border-transparent bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring focus:ring-primary dark:bg-primary dark:hover:bg-primary/80"
+                  >
+                    Cerrar sesión
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
