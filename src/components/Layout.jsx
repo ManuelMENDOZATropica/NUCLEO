@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar.jsx';
 import Sidebar from './Sidebar.jsx';
+import Login from './Login.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const Layout = () => {
+  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -31,6 +34,10 @@ const Layout = () => {
 
   const toggleSidebar = () => setIsSidebarOpen((value) => !value);
   const toggleTheme = () => setIsDarkMode((value) => !value);
+
+  if (!user) {
+    return <Login />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
