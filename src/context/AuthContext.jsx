@@ -5,6 +5,24 @@ const AuthContext = createContext(null);
 const STORAGE_KEY = 'nucleo-auth-user';
 const ALLOWED_DOMAIN = 'tropica.me';
 
+const normalizeStoredUser = (rawUser) => {
+  if (!rawUser || typeof rawUser !== 'object') {
+    return null;
+  }
+
+  const email = typeof rawUser.email === 'string' ? rawUser.email : null;
+
+  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+    return null;
+  }
+
+  return {
+    email,
+    name: typeof rawUser.name === 'string' ? rawUser.name : '',
+    picture: typeof rawUser.picture === 'string' ? rawUser.picture : '',
+  };
+};
+
 function getInitialUser() {
   if (typeof window === 'undefined') {
     return null;
@@ -14,9 +32,7 @@ function getInitialUser() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.email && typeof parsed.email === 'string' && parsed.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-      return parsed;
-    }
+    return normalizeStoredUser(parsed);
   } catch (error) {
     console.warn('No se pudo leer el usuario almacenado', error);
   }
@@ -36,25 +52,40 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user]);
 
-  const login = useCallback((email) => {
-    const normalizedEmail = String(email ?? '').trim().toLowerCase();
+  const loginWithGoogle = useCallback((profile) => {
+    const normalizedEmail = String(profile?.email ?? '').trim().toLowerCase();
 
     if (!normalizedEmail) {
-      throw new Error('Ingresa tu correo corporativo.');
+      throw new Error('No se recibió el correo electrónico de Google.');
     }
 
     if (!normalizedEmail.endsWith(`@${ALLOWED_DOMAIN}`)) {
       throw new Error('Solo se permiten cuentas @tropica.me.');
     }
 
-    setUser({ email: normalizedEmail });
+    const name = String(profile?.name ?? '').trim();
+    const picture = typeof profile?.picture === 'string' ? profile.picture : '';
+
+    setUser({
+      email: normalizedEmail,
+      name,
+      picture,
+    });
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
+  const value = useMemo(
+    () => ({
+      user,
+      login: loginWithGoogle,
+      loginWithGoogle,
+      logout,
+    }),
+    [user, loginWithGoogle, logout],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
