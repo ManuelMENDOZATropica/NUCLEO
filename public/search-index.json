@@ -1,0 +1,82 @@
+[
+  {
+    "slug": "",
+    "title": "Introducción a NUCLEO",
+    "description": "Cómo navegar el repositorio interno de TROPICA",
+    "tags": ["introduccion", "guia"],
+    "section": "recursos",
+    "updatedAt": "2024-05-01"
+  },
+  {
+    "slug": "recursos-ia",
+    "title": "Recursos de Inteligencia Artificial",
+    "description": "Modelos, automatizaciones y políticas de IA en TROPICA",
+    "tags": ["ia", "recursos"],
+    "section": "recursos-ia",
+    "updatedAt": "2024-04-18"
+  },
+  {
+    "slug": "recursos-ia/licencias",
+    "title": "Gestión de licencias",
+    "description": "Proceso para administrar licencias de software y accesos",
+    "tags": ["licencias", "procesos"],
+    "section": "recursos-ia",
+    "updatedAt": "2024-03-30"
+  },
+  {
+    "slug": "recursos-ia/licencias/catalogo",
+    "title": "Catálogo de licencias",
+    "description": "Listado actualizado de licencias de software utilizadas por TROPICA.",
+    "tags": ["licencias", "recursos-ia"],
+    "section": "recursos-ia",
+    "updatedAt": "2024-05-01"
+  },
+  {
+    "slug": "recursos-ia/tutoriales",
+    "title": "Tutoriales IA",
+    "description": "Guías paso a paso para aprovechar las herramientas de inteligencia artificial",
+    "tags": ["tutoriales", "ia"],
+    "section": "recursos-ia",
+    "updatedAt": "2024-04-02"
+  },
+  {
+    "slug": "recursos-ia/tutoriales/n8n",
+    "title": "Tutorial n8n",
+    "description": "Patrones y buenas prácticas para automatizar con n8n",
+    "tags": ["tutorial", "n8n"],
+    "section": "recursos-ia",
+    "updatedAt": "2024-04-25"
+  },
+  {
+    "slug": "recursos-ia/automatizaciones",
+    "title": "Automatizaciones",
+    "description": "Flujos automatizados disponibles para los equipos",
+    "tags": ["automatizaciones", "ia"],
+    "section": "recursos-ia",
+    "updatedAt": "2024-04-10"
+  },
+  {
+    "slug": "rrhh",
+    "title": "Recursos Humanos",
+    "description": "Políticas, beneficios y lineamientos para el equipo",
+    "tags": ["rrhh", "beneficios"],
+    "section": "rrhh",
+    "updatedAt": "2024-03-15"
+  },
+  {
+    "slug": "inducciones",
+    "title": "Inducciones",
+    "description": "Recorridos y materiales para nuevos ingresos",
+    "tags": ["inducciones", "onboarding"],
+    "section": "inducciones",
+    "updatedAt": "2024-03-22"
+  },
+  {
+    "slug": "recursos",
+    "title": "Recursos compartidos",
+    "description": "Plantillas, enlaces y materiales comunes",
+    "tags": ["recursos", "plantillas"],
+    "section": "recursos",
+    "updatedAt": "2024-02-28"
+  }
+]

@@ -1,0 +1,30 @@
+---
+title: "Tutorial n8n"
+description: "Patrones y buenas prácticas para automatizar con n8n"
+tags: ["tutorial", "n8n"]
+section: "recursos-ia"
+updatedAt: "2024-04-25"
+---
+
+<Tag value="n8n" /> <Tag value="automatizacion" />
+
+n8n es una plataforma de automatización visual que permite orquestar flujos entre APIs, bases de datos y servicios internos.
+
+## Patrones recomendados
+
+1. **Normaliza entradas** con nodos *Function* para asegurar consistencia.
+2. **Controla errores** implementando rutas alternativas con nodos *IF*.
+3. **Versiona tus flujos** exportando cada iteración al repositorio de procesos.
+
+```mermaid
+flowchart LR
+  A[Trigger] --> B{Validación}
+  B -- Sí --> C[Procesar datos]
+  B -- No --> D[Notificar]
+  C --> E[Actualizar CRM]
+```
+
+## Recursos
+
+- [Documentación oficial](https://docs.n8n.io/)
+- [Plantillas internas](https://tropica.notion.site)
