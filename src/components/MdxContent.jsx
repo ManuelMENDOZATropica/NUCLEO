@@ -9,10 +9,26 @@ const components = {
   CreatePublication
 };
 
-const MdxContent = ({ children }) => (
-  <div className="prose prose-slate dark:prose-invert">
-    <MDXProvider components={components}>{children}</MDXProvider>
-  </div>
-);
+const MdxContent = ({ children }) => {
+  const enhancedChildren = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      const childComponents = child.props?.components ?? {};
+      return React.cloneElement(child, {
+        components: {
+          ...childComponents,
+          ...components
+        }
+      });
+    }
+
+    return child;
+  });
+
+  return (
+    <div className="prose prose-slate dark:prose-invert">
+      <MDXProvider components={components}>{enhancedChildren}</MDXProvider>
+    </div>
+  );
+};
 
 export default MdxContent;
