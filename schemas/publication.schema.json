@@ -1,6 +1,6 @@
 {
   "$id": "https://tropica.me/schemas/publication.schema.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
   "title": "Publicación",
   "type": "object",
   "additionalProperties": false,
