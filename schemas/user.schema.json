@@ -1,6 +1,6 @@
 {
   "$id": "https://tropica.me/schemas/user.schema.json",
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "https://tropica.me/schemas/meta/draft-07.schema.json",
   "title": "Usuario",
   "type": "object",
   "additionalProperties": false,

@@ -33,10 +33,12 @@ async function validateData() {
   const usersPath = join(dataDir, 'users.json');
   const users = await loadJson(usersPath);
 
+  const metaSchema = await loadJson(join(schemaDir, 'meta/draft-07.schema.json'));
   const userSchema = await loadJson(join(schemaDir, 'user.schema.json'));
   const publicationSchema = await loadJson(join(schemaDir, 'publication.schema.json'));
 
   const ajv = new Ajv({ allErrors: true });
+  ajv.addMetaSchema(metaSchema);
   const validateUser = ajv.compile(userSchema);
   const validatePublication = ajv.compile(publicationSchema);
 
