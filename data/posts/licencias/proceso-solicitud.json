@@ -1,0 +1,12 @@
+{
+  "id": "licencias-proceso-solicitud",
+  "categoryId": "licencias",
+  "slug": "categorias/licencias/proceso-solicitud",
+  "title": "Proceso de solicitud de licencias",
+  "summary": "Pasos y responsables para solicitar licencias temporales.",
+  "body": "Describe la documentación requerida, tiempos de revisión y canales de aprobación para licencias.",
+  "status": "draft",
+  "authorEmail": "manuel@tropica.me",
+  "createdAt": "2024-04-18T09:30:00.000Z",
+  "updatedAt": "2024-05-28T15:10:00.000Z"
+}

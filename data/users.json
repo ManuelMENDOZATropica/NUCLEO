@@ -1,0 +1,38 @@
+[
+  {
+    "id": "benjamin-tropica",
+    "name": "Benjamín García",
+    "email": "benjamin@tropica.me",
+    "role": "admin",
+    "active": true,
+    "createdAt": "2024-01-12T09:30:00.000Z",
+    "updatedAt": "2024-06-02T14:45:00.000Z"
+  },
+  {
+    "id": "manuel-tropica",
+    "name": "Manuel Rodríguez",
+    "email": "manuel@tropica.me",
+    "role": "admin",
+    "active": true,
+    "createdAt": "2024-02-18T10:15:00.000Z",
+    "updatedAt": "2024-05-20T11:00:00.000Z"
+  },
+  {
+    "id": "micaela-tropica",
+    "name": "Micaela Fernández",
+    "email": "micaela@tropica.me",
+    "role": "editor",
+    "active": true,
+    "createdAt": "2024-03-04T08:05:00.000Z",
+    "updatedAt": "2024-05-10T16:20:00.000Z"
+  },
+  {
+    "id": "alicia-tropica",
+    "name": "Alicia Herrera",
+    "email": "alicia@tropica.me",
+    "role": "viewer",
+    "active": true,
+    "createdAt": "2024-03-22T12:00:00.000Z",
+    "updatedAt": "2024-04-28T13:40:00.000Z"
+  }
+]
