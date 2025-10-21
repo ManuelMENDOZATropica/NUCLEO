@@ -6,6 +6,12 @@ import Search from './pages/Search.jsx';
 import Tags from './pages/Tags.jsx';
 import Content from './pages/Content.jsx';
 import Users from './pages/Users.jsx';
+import CreatePublication from './pages/CreatePublication.jsx';
+import ManageUsers from './pages/ManageUsers.jsx';
+import ManageCategories from './pages/ManageCategories.jsx';
+import Categories from './pages/Categories.jsx';
+import ManagePosts from './pages/ManagePosts.jsx';
+import CategoryDetail from './pages/CategoryDetail.jsx';
 
 const AppRouter = () => (
   <Routes>
