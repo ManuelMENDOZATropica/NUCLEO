@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import CrudButtonGroup from './CrudButtonGroup.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { getEditablePublicationsForUser } from '../lib/data/publications.js';
-import { canPublish, RESOURCE_TYPES } from '../lib/permissions.js';
+import { canCreate, canPublish, RESOURCE_TYPES } from '../lib/permissions.js';
+import { listPublications } from '../services/publications.js';
 
 const defaultDescription =
   'Crea, consulta y actualiza las publicaciones internas sin salir de la documentación.';
@@ -19,13 +19,57 @@ const CreatePublication = ({
 }) => {
   const { user } = useAuth();
   const [lastAction, setLastAction] = useState('');
-  const editablePublications = useMemo(
-    () => (user ? getEditablePublicationsForUser(user) : []),
-    [user]
-  );
-  const hasPublishPermission = user
-    ? canPublish(user, RESOURCE_TYPES.PUBLICATION)
-    : false;
+  const [publications, setPublications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const hasCreatePermission = canCreate(user, RESOURCE_TYPES.PUBLICATION);
+  const hasPublishPermission = canPublish(user, RESOURCE_TYPES.PUBLICATION);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPublications() {
+      setLoading(true);
+      try {
+        const data = await listPublications();
+        if (isMounted) {
+          setPublications(Array.isArray(data) ? data : []);
+          setError('');
+        }
+      } catch (loadError) {
+        if (isMounted) {
+          setError(loadError.message ?? 'No se pudieron cargar las publicaciones.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadPublications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.email]);
+
+  const editablePublications = useMemo(() => {
+    if (!user || !hasCreatePermission) {
+      return [];
+    }
+
+    if (hasPublishPermission) {
+      return publications;
+    }
+
+    const normalizedEmail = (user.email || '').toLowerCase();
+    return publications.filter(
+      (publication) =>
+        (publication.authorEmail ?? '').toLowerCase() === normalizedEmail
+    );
+  }, [hasCreatePermission, hasPublishPermission, publications, user]);
 
   const containerClasses = [
     'space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900',
@@ -39,15 +83,31 @@ const CreatePublication = ({
     callback?.();
   };
 
-  const audienceMessage = user
-    ? editablePublications.length
-      ? `Puedes editar ${
-          editablePublications.length === 1
-            ? '1 publicación'
-            : `${editablePublications.length} publicaciones`
-        } asignadas a tu cuenta.`
-      : 'Aún no tienes publicaciones asignadas para editar.'
-    : 'Inicia sesión para gestionar las publicaciones del equipo.';
+  const audienceMessage = (() => {
+    if (!user) {
+      return 'Inicia sesión para gestionar las publicaciones del equipo.';
+    }
+
+    if (loading) {
+      return 'Cargando publicaciones asignadas…';
+    }
+
+    if (error) {
+      return error;
+    }
+
+    if (!editablePublications.length) {
+      return hasCreatePermission
+        ? 'Aún no tienes publicaciones asignadas para editar.'
+        : 'Tu rol actual no cuenta con permisos para editar publicaciones.';
+    }
+
+    return `Puedes editar ${
+      editablePublications.length === 1
+        ? '1 publicación'
+        : `${editablePublications.length} publicaciones`
+    } asignadas a tu cuenta.`;
+  })();
 
   return (
     <section className={containerClasses}>

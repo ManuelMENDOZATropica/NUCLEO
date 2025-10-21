@@ -18,14 +18,48 @@ NUCLEO es el repositorio interno de TROPICA para centralizar recursos clave de I
 
 ## Cómo ejecutar localmente
 
+1. Instala dependencias y prepara los datos opcionales:
+
+   ```bash
+   npm install
+   npm run sync:licenses
+   npm run generate:search
+   ```
+
+2. Levanta la API (se ejecuta en `http://localhost:5000` por defecto):
+
+   ```bash
+   npm run api
+   ```
+
+3. En otra terminal inicia Vite:
+
+   ```bash
+   npm run dev
+   ```
+
+   El frontend quedará disponible en `http://localhost:5173` y consumirá la API mediante la variable `VITE_API_URL`.
+
+### Variables de entorno
+
+Crea un archivo `.env.local` en la raíz del proyecto con la URL de la API que corresponda a tu entorno:
+
 ```bash
-npm install
-npm run sync:licenses
-npm run generate:search
-npm run dev
+VITE_API_URL=http://localhost:5000
 ```
 
-La aplicación estará disponible en `http://localhost:5173`.
+En producción define el valor de `VITE_API_URL` según la plataforma donde hospedes la API.
+
+### Endpoints disponibles
+
+El servidor JSON expone un CRUD básico en `/api/publications`:
+
+- `GET /api/publications`: lista todas las publicaciones.
+- `POST /api/publications`: crea una nueva publicación (campos obligatorios: `id`, `title`, `summary`, `body`, `authorEmail`).
+- `PUT /api/publications/:id`: actualiza una publicación existente.
+- `DELETE /api/publications/:id`: elimina una publicación y responde `204`.
+
+Los datos se almacenan en `data/publications.json`. Si el archivo no existe se genera automáticamente con un arreglo vacío.
 
 ## Estructura de contenido MDX
 
@@ -71,4 +105,4 @@ npm run build
 ```
 
 2. Conecta el repositorio a Vercel y define el comando de build `npm run build` y el directorio de salida `dist` (configurado en `vercel.json`).
-3. Cada nuevo commit en la rama principal generará un deploy estático listo para compartir.
+3. Cada nuevo commit en la rama principal generará un deploy estático listo para compartir. El archivo `vercel.json` incluye un rewrite "catch-all" que redirige las rutas internas al `index.html` de Vite para evitar errores 404 en enlaces profundos.
