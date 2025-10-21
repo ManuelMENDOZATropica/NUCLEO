@@ -3,6 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { getSectionList } from '../lib/contentLoader.js';
 
 const sections = getSectionList();
+const adminLinks = [
+  {
+    key: 'usuarios',
+    title: 'Usuarios',
+    href: '/usuarios',
+  },
+];
 
 const Sidebar = ({ isOpen, onNavigate }) => {
   const location = useLocation();
@@ -42,6 +49,32 @@ const Sidebar = ({ isOpen, onNavigate }) => {
             </ul>
           </div>
         ))}
+
+        <div>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Administración
+          </h2>
+          <ul className="space-y-1">
+            {adminLinks.map((link) => {
+              const isActive = location.pathname === link.href;
+              return (
+                <li key={link.key}>
+                  <Link
+                    to={link.href}
+                    onClick={onNavigate}
+                    className={`block rounded-md px-3 py-2 transition hover:bg-slate-100 dark:hover:bg-slate-900 ${
+                      isActive
+                        ? 'bg-slate-100 font-medium text-primary dark:bg-slate-900'
+                        : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    {link.title}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </nav>
     </aside>
   );

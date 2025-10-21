@@ -5,12 +5,7 @@ import Home from './pages/Home.jsx';
 import Search from './pages/Search.jsx';
 import Tags from './pages/Tags.jsx';
 import Content from './pages/Content.jsx';
-import CreatePublication from './pages/CreatePublication.jsx';
-import ManageUsers from './pages/ManageUsers.jsx';
-import Categories from './pages/Categories.jsx';
-import CategoryDetail from './pages/CategoryDetail.jsx';
-import ManageCategories from './pages/ManageCategories.jsx';
-import ManagePosts from './pages/ManagePosts.jsx';
+import Users from './pages/Users.jsx';
 
 const AppRouter = () => (
   <Routes>
@@ -24,6 +19,7 @@ const AppRouter = () => (
       <Route path="categorias/gestionar" element={<ManagePosts />} />
       <Route path="categorias/:categoryId" element={<CategoryDetail />} />
       <Route path="tags/:tag" element={<Tags />} />
+      <Route path="usuarios" element={<Users />} />
       <Route path="*" element={<Content />} />
     </Route>
   </Routes>
