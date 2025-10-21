@@ -12,6 +12,12 @@ const AppRouter = () => (
     <Route element={<Layout />}>
       <Route index element={<Home />} />
       <Route path="buscar" element={<Search />} />
+      <Route path="publicaciones/nueva" element={<CreatePublication />} />
+      <Route path="admin/usuarios" element={<ManageUsers />} />
+      <Route path="admin/categorias" element={<ManageCategories />} />
+      <Route path="categorias" element={<Categories />} />
+      <Route path="categorias/gestionar" element={<ManagePosts />} />
+      <Route path="categorias/:categoryId" element={<CategoryDetail />} />
       <Route path="tags/:tag" element={<Tags />} />
       <Route path="usuarios" element={<Users />} />
       <Route path="*" element={<Content />} />
