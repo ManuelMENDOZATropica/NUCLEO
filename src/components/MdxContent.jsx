@@ -1,10 +1,12 @@
 import React from 'react';
 import { MDXProvider } from '@mdx-js/react';
 import Tag from './Tag.jsx';
+import CreatePublication from './CreatePublication.jsx';
 
 const components = {
   a: (props) => <a {...props} className="font-medium text-primary hover:text-primary-dark" />,
-  Tag
+  Tag,
+  CreatePublication
 };
 
 const MdxContent = ({ children }) => (
