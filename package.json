@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/sync-licenses.js && node scripts/build-search-index.js && vite build",
+    "build": "npm run validate:data && node scripts/sync-licenses.js && node scripts/build-search-index.js && vite build",
     "preview": "vite preview",
     "sync:licenses": "node scripts/sync-licenses.js",
-    "generate:search": "node scripts/build-search-index.js"
+    "generate:search": "node scripts/build-search-index.js",
+    "validate:data": "node scripts/validate-data.js"
   },
   "dependencies": {
     "@mdx-js/react": "^3.0.0",
@@ -16,6 +17,7 @@
     "fast-glob": "^3.3.2",
     "fuse.js": "^7.0.0",
     "gray-matter": "^4.0.3",
+    "ajv": "^8.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3"
