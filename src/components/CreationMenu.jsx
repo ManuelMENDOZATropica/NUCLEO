@@ -18,11 +18,25 @@ const ACTIONS = [
     isVisible: (user) => canCreate(user, RESOURCE_TYPES.PUBLICATION),
   },
   {
+    id: 'manage-category-posts',
+    label: 'Administrar posts por categoría',
+    description: 'Crea, actualiza o elimina posts asignados a tus categorías.',
+    to: '/categorias/gestionar',
+    isVisible: (user) => canCreate(user, RESOURCE_TYPES.POST),
+  },
+  {
     id: 'publish-publication',
     label: 'Publicar contenido',
     description: 'Aprueba y programa publicaciones listas para producción.',
     to: '/publicaciones',
     isVisible: (user) => canPublish(user, RESOURCE_TYPES.PUBLICATION),
+  },
+  {
+    id: 'manage-categories',
+    label: 'Gestionar categorías',
+    description: 'Define nuevas categorías o archiva las existentes.',
+    to: '/admin/categorias',
+    isVisible: (user) => canCreate(user, RESOURCE_TYPES.CATEGORY),
   },
   {
     id: 'manage-users',

@@ -31,15 +31,21 @@ async function validateData() {
   const schemaDir = join(projectRoot, 'schemas');
 
   const usersPath = join(dataDir, 'users.json');
+  const categoriesPath = join(dataDir, 'categories.json');
   const users = await loadJson(usersPath);
+  const categories = await loadJson(categoriesPath);
 
   const metaSchema = await loadJson(join(schemaDir, 'meta/draft-07.schema.json'));
   const userSchema = await loadJson(join(schemaDir, 'user.schema.json'));
+  const categorySchema = await loadJson(join(schemaDir, 'category.schema.json'));
+  const postSchema = await loadJson(join(schemaDir, 'post.schema.json'));
   const publicationSchema = await loadJson(join(schemaDir, 'publication.schema.json'));
 
   const ajv = new Ajv({ allErrors: true });
   ajv.addMetaSchema(metaSchema);
   const validateUser = ajv.compile(userSchema);
+  const validateCategory = ajv.compile(categorySchema);
+  const validatePost = ajv.compile(postSchema);
   const validatePublication = ajv.compile(publicationSchema);
 
   const errors = [];
@@ -68,6 +74,49 @@ async function validateData() {
     } else {
       userMap.set(email, user);
     }
+  }
+
+  if (!Array.isArray(categories)) {
+    errors.push('El archivo categories.json debe exportar un arreglo de categorías.');
+  }
+
+  const categoryMap = new Map();
+  const categorySlugSet = new Set();
+
+  for (const category of Array.isArray(categories) ? categories : []) {
+    if (!validateCategory(category)) {
+      const ajvMessages = formatAjvErrors(validateCategory.errors);
+      errors.push(
+        `Categoría inválida (${category?.id ?? 'sin id'}): ${ajvMessages.join(', ')}`
+      );
+      continue;
+    }
+
+    const id = category.id.toLowerCase();
+    const slug = category.slug.toLowerCase();
+    if (categoryMap.has(id)) {
+      errors.push(`La categoría ${category.id} está duplicada en categories.json.`);
+      continue;
+    }
+
+    if (categorySlugSet.has(slug)) {
+      errors.push(`El slug ${category.slug} está duplicado en categories.json.`);
+      continue;
+    }
+
+    const creator = userMap.get(category.createdBy.toLowerCase());
+    if (!creator) {
+      errors.push(
+        `La categoría ${category.id} tiene un creador no registrado (${category.createdBy}).`
+      );
+    } else if (creator.role !== ROLES.ADMIN) {
+      errors.push(
+        `La categoría ${category.id} debe ser creada por un administrador (actual: ${creator.role}).`
+      );
+    }
+
+    categoryMap.set(id, category);
+    categorySlugSet.add(slug);
   }
 
   const requiredUsers = {
@@ -133,6 +182,54 @@ async function validateData() {
       errors.push(
         `La publicación ${publication.id} no está publicada pero define publishedAt.`
       );
+    }
+  }
+
+  const postsDir = join(dataDir, 'posts');
+  const postFiles = await fg('**/*.json', {
+    cwd: postsDir,
+    absolute: true
+  });
+
+  for (const filePath of postFiles) {
+    const post = await loadJson(filePath);
+    if (!validatePost(post)) {
+      const ajvMessages = formatAjvErrors(validatePost.errors);
+      errors.push(
+        `Post inválido (${relative(projectRoot, filePath)}): ${ajvMessages.join(', ')}`
+      );
+      continue;
+    }
+
+    const category = categoryMap.get(post.categoryId?.toLowerCase() ?? '');
+    if (!category) {
+      errors.push(
+        `El post ${post.id} hace referencia a una categoría inexistente (${post.categoryId}).`
+      );
+    }
+
+    const author = userMap.get(post.authorEmail?.toLowerCase() ?? '');
+    if (!author) {
+      errors.push(
+        `El post ${post.id} no tiene un autor registrado (${post.authorEmail}).`
+      );
+      continue;
+    }
+
+    if (!canCreate(author, RESOURCE_TYPES.POST, post)) {
+      errors.push(`El autor ${author.email} no tiene permisos para crear el post ${post.id}.`);
+    }
+
+    if (post.status === 'published') {
+      if (!post.publishedAt) {
+        errors.push(`El post ${post.id} está publicado pero no tiene fecha de publicación.`);
+      }
+
+      if (!canPublish(author, RESOURCE_TYPES.POST, post)) {
+        errors.push(`El autor ${author.email} no tiene permisos para publicar el post ${post.id}.`);
+      }
+    } else if (post.publishedAt) {
+      errors.push(`El post ${post.id} no está publicado pero define publishedAt.`);
     }
   }
 

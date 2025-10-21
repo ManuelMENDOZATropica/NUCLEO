@@ -6,7 +6,9 @@ export const ROLES = Object.freeze({
 
 export const RESOURCE_TYPES = Object.freeze({
   PUBLICATION: 'publication',
-  USER: 'user'
+  USER: 'user',
+  CATEGORY: 'category',
+  POST: 'post'
 });
 
 function isAdmin(user) {
@@ -57,6 +59,13 @@ export function canCreate(user, resourceType = RESOURCE_TYPES.PUBLICATION, resou
     return matchesAuthor(user, resource);
   }
 
+  if (resourceType === RESOURCE_TYPES.POST && isEditor(user)) {
+    if (!resource) {
+      return true;
+    }
+    return matchesAuthor(user, resource);
+  }
+
   return false;
 }
 
@@ -73,15 +82,15 @@ export function canEdit(user, resourceType = RESOURCE_TYPES.PUBLICATION, resourc
     return matchesAuthor(user, resource);
   }
 
-  if (resourceType === RESOURCE_TYPES.USER) {
-    return false;
+  if (resourceType === RESOURCE_TYPES.POST && isEditor(user)) {
+    return matchesAuthor(user, resource);
   }
 
   return false;
 }
 
 export function canPublish(user, resourceType = RESOURCE_TYPES.PUBLICATION, resource = null) {
-  if (resourceType !== RESOURCE_TYPES.PUBLICATION) {
+  if (resourceType !== RESOURCE_TYPES.PUBLICATION && resourceType !== RESOURCE_TYPES.POST) {
     return false;
   }
 
