@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar.jsx';
 import Sidebar from './Sidebar.jsx';
 import Login from './Login.jsx';
+import CreationMenu from './CreationMenu.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const Layout = () => {
@@ -42,6 +43,7 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar onToggleSidebar={toggleSidebar} onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+      <CreationMenu />
       <div className="mx-auto flex max-w-6xl flex-1 gap-6 px-4 py-10 lg:px-6">
         <Sidebar isOpen={isSidebarOpen} onNavigate={() => setIsSidebarOpen(false)} />
         {isSidebarOpen && (
