@@ -1,0 +1,37 @@
+{
+  "$id": "https://tropica.me/schemas/user.schema.json",
+  "$schema": "https://tropica.me/schemas/meta/draft-07.schema.json",
+  "title": "Usuario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "email", "role", "active", "createdAt", "updatedAt"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{3,}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3
+    },
+    "email": {
+      "type": "string",
+      "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+    },
+    "role": {
+      "type": "string",
+      "enum": ["admin", "editor", "viewer"]
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "updatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    }
+  }
+}

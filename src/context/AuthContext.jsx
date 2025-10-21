@@ -1,26 +1,44 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { getUserByEmail } from '../lib/data/users.js';
 
 const AuthContext = createContext(null);
 
 const STORAGE_KEY = 'nucleo-auth-user';
 const ALLOWED_DOMAIN = 'tropica.me';
 
+const buildSessionUser = (record, overrides = {}) => {
+  if (!record) {
+    return null;
+  }
+
+  const nameOverride = typeof overrides.name === 'string' ? overrides.name.trim() : '';
+  const pictureOverride = typeof overrides.picture === 'string' ? overrides.picture : '';
+
+  return {
+    ...record,
+    name: nameOverride || record.name || record.email,
+    picture: pictureOverride,
+  };
+};
+
 const normalizeStoredUser = (rawUser) => {
   if (!rawUser || typeof rawUser !== 'object') {
     return null;
   }
 
-  const email = typeof rawUser.email === 'string' ? rawUser.email : null;
+  const email = typeof rawUser.email === 'string' ? rawUser.email.trim().toLowerCase() : null;
 
   if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
     return null;
   }
 
-  return {
-    email,
-    name: typeof rawUser.name === 'string' ? rawUser.name : '',
-    picture: typeof rawUser.picture === 'string' ? rawUser.picture : '',
-  };
+  const baseRecord = getUserByEmail(email);
+
+  if (!baseRecord || baseRecord.active === false) {
+    return null;
+  }
+
+  return buildSessionUser(baseRecord, rawUser);
 };
 
 function getInitialUser() {
@@ -63,14 +81,22 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Solo se permiten cuentas @tropica.me.');
     }
 
-    const name = String(profile?.name ?? '').trim();
-    const picture = typeof profile?.picture === 'string' ? profile.picture : '';
+    const baseRecord = getUserByEmail(normalizedEmail);
 
-    setUser({
-      email: normalizedEmail,
-      name,
-      picture,
+    if (!baseRecord) {
+      throw new Error('Tu cuenta no está autorizada para acceder a NUCLEO.');
+    }
+
+    if (baseRecord.active === false) {
+      throw new Error('Tu cuenta está inactiva en NUCLEO. Contacta a un administrador.');
+    }
+
+    const sessionUser = buildSessionUser(baseRecord, {
+      name: profile?.name,
+      picture: profile?.picture,
     });
+
+    setUser(sessionUser);
   }, []);
 
   const logout = useCallback(() => {
