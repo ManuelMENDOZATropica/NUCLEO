@@ -1,0 +1,231 @@
+{
+  "IA y Automatización": [
+    {
+      "nombre": "ChatGPT",
+      "licencia": "Enterprise (OpenAI)",
+      "enlace": "https://chat.openai.com/",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg",
+      "subHerramientas": [
+        "DALL·E 3 integrado: generación y edición de imágenes dentro del chat.",
+        "Advanced Data Analysis (ADA): análisis de datos, hojas de cálculo y gráficos.",
+        "Python sandbox: ejecutar scripts en entorno aislado.",
+        "Memoria contextual: recuerda instrucciones y proyectos.",
+        "Integraciones seguras: Google Drive, Notion, Slack, Trello, Asana, Zapier.",
+        "API empresarial incluida.",
+        "Consola de administración y control de dominios."
+      ],
+      "usos": [
+        "Redacción técnica y creativa.",
+        "Documentación interna y reportes.",
+        "Automatización de tareas repetitivas.",
+        "Análisis de datos y visualizaciones rápidas.",
+        "Ideación creativa y brainstorming."
+      ]
+    },
+    {
+      "nombre": "Gemini",
+      "licencia": "Business (Google Cloud)",
+      "enlace": "https://gemini.google.com/",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Google_Gemini_logo.svg",
+      "subHerramientas": [
+        "Integración nativa con Workspace (Docs, Sheets, Slides, Gmail).",
+        "Generación y análisis de contenido en documentos colaborativos.",
+        "Acceso a modelos multimodales (texto, imagen, código).",
+        "Seguridad y cumplimiento empresarial (datos en Google Cloud)."
+      ],
+      "usos": [
+        "Asistir en redacción en documentos compartidos.",
+        "Análisis de datos en hojas de cálculo.",
+        "Creación de presentaciones con texto e imagen.",
+        "Soporte de IA dentro de Gmail o Chat."
+      ]
+    },
+    {
+      "nombre": "n8n",
+      "licencia": "Cloud (Equipo TRÓPICA)",
+      "enlace": "https://n8n.io/",
+      "logo": "https://n8n.io/logo.svg",
+      "subHerramientas": [
+        "Flujos automatizados con más de 400 integraciones.",
+        "Ejecutor visual de nodos y API.",
+        "Soporte de scripts en JavaScript.",
+        "Webhooks para conexión entre apps internas y externas."
+      ],
+      "usos": [
+        "Automatización de procesos internos.",
+        "Integración entre herramientas (Slack, Notion, Drive).",
+        "Disparadores de tareas automáticas.",
+        "Notificaciones o pipelines simples sin código."
+      ]
+    },
+    {
+      "nombre": "Nano Banana",
+      "licencia": "Experimental (TRÓPICA Lab)",
+      "enlace": "https://nanobanana.ai/",
+      "logo": "https://nanobanana.ai/logo.png",
+      "subHerramientas": [
+        "Generación de contenido visual híbrido (texto + imagen).",
+        "Asistente creativo con prompts colaborativos.",
+        "Exportación a formatos multimedia (GIF, MP4, SVG).",
+        "Integración con herramientas de diseño."
+      ],
+      "usos": [
+        "Exploración de estilos visuales nuevos.",
+        "Generación de materiales conceptuales.",
+        "Prototipos creativos con IA generativa."
+      ]
+    }
+  ],
+  "Diseño y Creatividad": [
+    {
+      "nombre": "Midjourney",
+      "licencia": "Pro (Discord Bot)",
+      "enlace": "https://www.midjourney.com/",
+      "logo": "https://cdn.worldvectorlogo.com/logos/midjourney.svg",
+      "subHerramientas": [
+        "Generación de imágenes a partir de texto (prompting).",
+        "Control de estilos, luz y composición.",
+        "Modo Remix y Zoom Out para iteraciones."
+      ],
+      "usos": [
+        "Concept art y visualizaciones.",
+        "Moodboards para campañas.",
+        "Diseño de personajes o escenarios."
+      ]
+    },
+    {
+      "nombre": "Figma",
+      "licencia": "Organización (Figma Inc.)",
+      "enlace": "https://www.figma.com/",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg",
+      "subHerramientas": [
+        "Diseño UI/UX colaborativo en tiempo real.",
+        "Prototipado interactivo.",
+        "FigJam para brainstorming visual.",
+        "Plugins de IA y exportación avanzada."
+      ],
+      "usos": [
+        "Diseño de interfaces y mockups.",
+        "Prototipos navegables para desarrollo.",
+        "Documentación de componentes y flujos."
+      ]
+    },
+    {
+      "nombre": "Motion",
+      "licencia": "Business",
+      "enlace": "https://www.usemotion.com/",
+      "logo": "https://www.usemotion.com/favicon.ico",
+      "subHerramientas": [
+        "Planificación automática de tareas y reuniones.",
+        "Integración con Google Calendar y Slack.",
+        "Asignación inteligente según prioridad."
+      ],
+      "usos": [
+        "Gestión de tiempo personal y de equipo.",
+        "Priorización automática de tareas.",
+        "Optimización de agendas diarias."
+      ]
+    },
+    {
+      "nombre": "Boords",
+      "licencia": "Pro (Storyboard)",
+      "enlace": "https://boords.com/",
+      "logo": "https://boords.com/favicon.ico",
+      "subHerramientas": [
+        "Creación de guiones gráficos colaborativos.",
+        "Exportación a PDF o video animático.",
+        "Revisión por comentarios en línea."
+      ],
+      "usos": [
+        "Previsualización de videos o animaciones.",
+        "Storyboards para campañas o reels.",
+        "Planificación de escenas audiovisuales."
+      ]
+    },
+    {
+      "nombre": "Magnific AI",
+      "licencia": "Pro",
+      "enlace": "https://magnific.ai/",
+      "logo": "https://magnific.ai/logo.png",
+      "subHerramientas": [
+        "Upscaling inteligente de imágenes (hasta 4K).",
+        "Restauración y mejora de detalle.",
+        "Controles de nitidez, textura y realismo."
+      ],
+      "usos": [
+        "Optimización de imágenes generadas por IA.",
+        "Mejora de fotos o renders antiguos.",
+        "Preparación de material gráfico para impresión."
+      ]
+    },
+    {
+      "nombre": "Adobe Firefly",
+      "licencia": "Incluida en Adobe CC",
+      "enlace": "https://www.adobe.com/sensei/generative-ai/firefly.html",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Adobe_Firefly_logo.svg",
+      "subHerramientas": [
+        "Generación de imágenes y texto a imagen.",
+        "Relleno generativo en Photoshop.",
+        "Efectos de texto y estilos automáticos.",
+        "Entrenamiento con contenido con licencia segura."
+      ],
+      "usos": [
+        "Diseño visual asistido.",
+        "Edición de imágenes con IA.",
+        "Creación de assets para branding y marketing."
+      ]
+    },
+    {
+      "nombre": "Runway",
+      "licencia": "Standard (Runway ML)",
+      "enlace": "https://runwayml.com/",
+      "logo": "https://runwayml.com/favicon.ico",
+      "subHerramientas": [
+        "Generación de video con texto (Gen-2).",
+        "Edición por máscara y trackeo de movimiento.",
+        "Colaboración en línea y exportación rápida."
+      ],
+      "usos": [
+        "Creación de videos generativos.",
+        "Edición visual rápida para reels o prototipos.",
+        "Efectos visuales sin After Effects."
+      ]
+    },
+    {
+      "nombre": "Veo 3",
+      "licencia": "Preview (Google DeepMind)",
+      "enlace": "https://deepmind.google/veo/",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Google_Gemini_logo.svg",
+      "subHerramientas": [
+        "Generación de video a partir de texto.",
+        "Control de cámara y estilo cinematográfico.",
+        "Entrenamiento con datasets de filmografía y animación.",
+        "Exportación en calidad 1080p y 4K."
+      ],
+      "usos": [
+        "Producción de videos creativos por IA.",
+        "Exploración visual para campañas o trailers.",
+        "Prototipado rápido de contenido audiovisual."
+      ]
+    }
+  ],
+  "Audio y Voz": [
+    {
+      "nombre": "ElevenLabs",
+      "licencia": "Creator+",
+      "enlace": "https://elevenlabs.io/",
+      "logo": "https://cdn.worldvectorlogo.com/logos/elevenlabs-1.svg",
+      "subHerramientas": [
+        "Síntesis de voz realista multilingüe.",
+        "Clonación de voz personalizada.",
+        "Control de tono, emoción y velocidad.",
+        "Integración API y exportación a MP3/WAV."
+      ],
+      "usos": [
+        "Narración de videos y contenido.",
+        "Prototipado de locuciones o doblaje.",
+        "Asistentes de voz o demos interactivas."
+      ]
+    }
+  ]
+}
