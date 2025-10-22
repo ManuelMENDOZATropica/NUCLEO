@@ -78,7 +78,19 @@ const navStyles = {
   },
 };
 
-export default function Navbar({ active = "home", onNavigate, user, onSignOut }) {
+export default function Navbar({ active = "home", onNavigate, user, onSignOut, canAccessAdmin = false, currentRole = "viewer" }) {
+  const navigationItems = [
+    { id: "home", label: "Inicio" },
+    { id: "licenses", label: "Licencias" },
+  ];
+
+  if (canAccessAdmin) {
+    navigationItems.push({ id: "admin", label: "Admin" });
+  }
+
+  const safeRole = typeof currentRole === "string" && currentRole ? currentRole : "viewer";
+  const normalizedRole = safeRole.charAt(0).toUpperCase() + safeRole.slice(1);
+
   return (
     <header style={navStyles.container}>
       <div style={navStyles.inner}>
@@ -87,10 +99,7 @@ export default function Navbar({ active = "home", onNavigate, user, onSignOut })
           <span style={navStyles.brandAccent}>toolkit</span>
         </div>
         <nav style={navStyles.menu}>
-          {[
-            { id: "home", label: "Inicio" },
-            { id: "licenses", label: "Licencias" },
-          ].map(item => (
+          {navigationItems.map(item => (
             <button
               key={item.id}
               type="button"
@@ -122,6 +131,7 @@ export default function Navbar({ active = "home", onNavigate, user, onSignOut })
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
             <span style={{ fontWeight: 600 }}>{user?.name || "Usuario"}</span>
             <span style={{ fontSize: 12, color: "#cbd5f5" }}>{user?.email}</span>
+            <span style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Rol: {normalizedRole}</span>
           </div>
           <button type="button" onClick={onSignOut} style={navStyles.signOut}>
             Cerrar sesión

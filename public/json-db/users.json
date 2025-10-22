@@ -1,0 +1,19 @@
+{
+  "users": [
+    {
+      "email": "manuel@tropica.me",
+      "name": "Manuel",
+      "role": "admin"
+    },
+    {
+      "email": "sofia@tropica.me",
+      "name": "Sofía",
+      "role": "viewer"
+    },
+    {
+      "email": "diego@tropica.me",
+      "name": "Diego",
+      "role": "editor"
+    }
+  ]
+}
