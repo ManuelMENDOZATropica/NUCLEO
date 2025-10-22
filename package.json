@@ -5,32 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run validate:data && node scripts/sync-licenses.js && node scripts/build-search-index.js && vite build",
-    "preview": "vite preview",
-    "api": "node server.js",
-    "sync:licenses": "node scripts/sync-licenses.js",
-    "generate:search": "node scripts/build-search-index.js",
-    "validate:data": "node scripts/validate-data.js"
+    "build": "vite build",
+    "preview": "vite preview --port 5173"
   },
   "dependencies": {
-    "@mdx-js/react": "^3.0.0",
-    "csv-parse": "^5.5.3",
-    "fast-glob": "^3.3.2",
-    "fuse.js": "^7.0.0",
-    "gray-matter": "^4.0.3",
-    "ajv": "^8.12.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.12",
-    "@mdx-js/rollup": "^3.0.0",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "remark-gfm": "^4.0.0",
-    "tailwindcss": "^3.4.1",
     "vite": "^5.1.4"
   }
 }
