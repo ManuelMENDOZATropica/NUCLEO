@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Licenses from "./pages/Licenses";
+import AdminPage from "./pages/Admin";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const ALLOWED_DOMAIN = "tropica.me";
 const STORAGE_KEY = "tropica:user";
+const ADMIN_EMAIL = "manuel@tropica.me";
 
 function decodeJwtPayload(token) {
   if (!token) return null;
@@ -32,6 +34,10 @@ export default function App() {
   const [isButtonRendered, setIsButtonRendered] = useState(false);
   const [activeView, setActiveView] = useState("home");
   const buttonRef = useRef(null);
+  const [members, setMembers] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isSavingMembers, setIsSavingMembers] = useState(false);
+  const [membersError, setMembersError] = useState("");
 
   const isAllowed = useMemo(
     () => (email) => typeof email === "string" && email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN}`),
@@ -110,7 +116,76 @@ export default function App() {
   const signOut = () => {
     setUser(null);
     setActiveView("home");
+    setMembers([]);
+    setMembersError("");
   };
+
+  const fetchMembers = useCallback(async () => {
+    setIsLoadingMembers(true);
+    setMembersError("");
+    try {
+      const response = await fetch("/api/users");
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const data = await response.json();
+      const list = Array.isArray(data?.users) ? data.users : [];
+      setMembers(list);
+    } catch (fetchError) {
+      console.error(fetchError);
+      setMembersError("No se pudieron cargar los usuarios.");
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  }, []);
+
+  const handleSaveRoles = useCallback(async (draftRoles) => {
+    setIsSavingMembers(true);
+    setMembersError("");
+    try {
+      const updated = members.map(member => {
+        const key = member.email.toLowerCase();
+        const nextRole = draftRoles[key] || member.role || (key === ADMIN_EMAIL ? "admin" : "viewer");
+        return { ...member, role: key === ADMIN_EMAIL ? "admin" : nextRole };
+      });
+      const response = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ users: updated }),
+      });
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const data = await response.json();
+      const list = Array.isArray(data?.users) ? data.users : updated;
+      setMembers(list);
+    } catch (saveError) {
+      console.error(saveError);
+      setMembersError("No se pudieron guardar los cambios.");
+    } finally {
+      setIsSavingMembers(false);
+    }
+  }, [members]);
+
+  useEffect(() => {
+    if (user) {
+      fetchMembers();
+    }
+  }, [user, fetchMembers]);
+
+  const normalizedEmail = user?.email?.toLowerCase() || "";
+  const currentMember = useMemo(
+    () => members.find(member => member.email.toLowerCase() === normalizedEmail),
+    [members, normalizedEmail]
+  );
+  const currentRole = currentMember?.role || (normalizedEmail === ADMIN_EMAIL ? "admin" : "viewer");
+  const canAccessAdmin = currentRole === "admin";
+
+  useEffect(() => {
+    if (activeView === "admin" && !canAccessAdmin) {
+      setActiveView("home");
+    }
+  }, [activeView, canAccessAdmin]);
 
   if (!user) {
     return (
@@ -141,10 +216,28 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #e2e8f0 0%, #f8fafc 40%, #f8fafc 100%)" }}>
-      <Navbar active={activeView} onNavigate={setActiveView} user={user} onSignOut={signOut} />
+      <Navbar
+        active={activeView}
+        onNavigate={setActiveView}
+        user={user}
+        onSignOut={signOut}
+        canAccessAdmin={canAccessAdmin}
+        currentRole={currentRole}
+      />
       <main style={{ minHeight: "calc(100vh - 72px)" }}>
         {activeView === "home" && <Home user={user} />}
         {activeView === "licenses" && <Licenses />}
+        {activeView === "admin" && (
+          <AdminPage
+            members={members}
+            onSave={handleSaveRoles}
+            isSaving={isSavingMembers}
+            isLoading={isLoadingMembers}
+            error={membersError}
+            canEdit={canAccessAdmin}
+            currentUserEmail={user.email}
+          />
+        )}
       </main>
     </div>
   );
