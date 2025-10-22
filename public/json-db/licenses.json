@@ -26,7 +26,7 @@
       "nombre": "Gemini",
       "licencia": "Business (Google Cloud)",
       "enlace": "https://gemini.google.com/",
-      "logo": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Google_Gemini_logo.svg",
+      "logo": "https://commons.wikimedia.org/wiki/File:Google_Gemini_logo.svg",
       "subHerramientas": [
         "Integración nativa con Workspace (Docs, Sheets, Slides, Gmail).",
         "Generación y análisis de contenido en documentos colaborativos.",
@@ -44,7 +44,7 @@
       "nombre": "n8n",
       "licencia": "Cloud (Equipo TRÓPICA)",
       "enlace": "https://n8n.io/",
-      "logo": "https://n8n.io/logo.svg",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/d/d9/N8n_logo.png",
       "subHerramientas": [
         "Flujos automatizados con más de 400 integraciones.",
         "Ejecutor visual de nodos y API.",
@@ -62,7 +62,7 @@
       "nombre": "Nano Banana",
       "licencia": "Experimental (TRÓPICA Lab)",
       "enlace": "https://nanobanana.ai/",
-      "logo": "https://nanobanana.ai/logo.png",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/d/d9/Google_Gemini_logo_2025.svg",
       "subHerramientas": [
         "Generación de contenido visual híbrido (texto + imagen).",
         "Asistente creativo con prompts colaborativos.",
@@ -81,7 +81,7 @@
       "nombre": "Midjourney",
       "licencia": "Pro (Discord Bot)",
       "enlace": "https://www.midjourney.com/",
-      "logo": "https://cdn.worldvectorlogo.com/logos/midjourney.svg",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/2/24/Midjourney_Emblem.svg",
       "subHerramientas": [
         "Generación de imágenes a partir de texto (prompting).",
         "Control de estilos, luz y composición.",
@@ -146,7 +146,7 @@
       "nombre": "Magnific AI",
       "licencia": "Pro",
       "enlace": "https://magnific.ai/",
-      "logo": "https://magnific.ai/logo.png",
+      "logo": "https://magnific.ai/logomagnific2.png",
       "subHerramientas": [
         "Upscaling inteligente de imágenes (hasta 4K).",
         "Restauración y mejora de detalle.",
@@ -162,7 +162,7 @@
       "nombre": "Adobe Firefly",
       "licencia": "Incluida en Adobe CC",
       "enlace": "https://www.adobe.com/sensei/generative-ai/firefly.html",
-      "logo": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Adobe_Firefly_logo.svg",
+      "logo": "https://www.adobe.com/federal/assets/svgs/adobe-logo.svg",
       "subHerramientas": [
         "Generación de imágenes y texto a imagen.",
         "Relleno generativo en Photoshop.",
