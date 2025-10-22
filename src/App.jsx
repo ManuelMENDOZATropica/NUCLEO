@@ -2,10 +2,43 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Licenses from "./pages/Licenses";
+import Admin from "./pages/Admin";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const ALLOWED_DOMAIN = "tropica.me";
 const STORAGE_KEY = "tropica:user";
+const USERS_STORAGE_KEY = "tropica:users";
+const DEFAULT_ADMIN_EMAIL = "manuel@tropica.me";
+const ROLES = ["Admin", "Editor", "Viewer"];
+
+function normalizeEmail(email) {
+  return (email || "").trim().toLowerCase();
+}
+
+function ensureDefaultAdmin(list) {
+  const normalizedDefault = normalizeEmail(DEFAULT_ADMIN_EMAIL);
+  let hasAdmin = false;
+
+  const updated = list.map(user => {
+    if (normalizeEmail(user.email) === normalizedDefault) {
+      hasAdmin = true;
+      return { ...user, role: "Admin" };
+    }
+    return user;
+  });
+
+  if (!hasAdmin) {
+    updated.push({
+      email: DEFAULT_ADMIN_EMAIL,
+      name: "Manuel",
+      picture: "",
+      role: "Admin",
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return updated;
+}
 
 function decodeJwtPayload(token) {
   if (!token) return null;
@@ -27,6 +60,8 @@ export default function App() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; } catch { return null; }
   });
+  const [users, setUsers] = useState([]);
+  const [isUsersReady, setIsUsersReady] = useState(false);
   const [error, setError] = useState("");
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isButtonRendered, setIsButtonRendered] = useState(false);
@@ -42,6 +77,63 @@ export default function App() {
     if (user) localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
     else localStorage.removeItem(STORAGE_KEY);
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUsers() {
+      let data = [];
+
+      try {
+        const stored = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY));
+        if (Array.isArray(stored)) {
+          data = stored;
+        }
+      } catch {
+        // ignore storage parsing errors
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        try {
+          const response = await fetch("/json-db/users.json", { cache: "no-store" });
+          if (response.ok) {
+            const json = await response.json();
+            if (Array.isArray(json)) {
+              data = json;
+            }
+          }
+        } catch {
+          // network errors are ignored; we fall back to defaults
+        }
+      }
+
+      if (!Array.isArray(data)) {
+        data = [];
+      }
+
+      const prepared = ensureDefaultAdmin(data);
+
+      if (!cancelled) {
+        setUsers(prepared);
+        setIsUsersReady(true);
+      }
+    }
+
+    loadUsers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isUsersReady) return;
+    try {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    } catch {
+      // ignore storage failures
+    }
+  }, [users, isUsersReady]);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
@@ -82,6 +174,39 @@ export default function App() {
     setError("");
   }, [isAllowed]);
 
+  useEffect(() => {
+    if (!isUsersReady || !user?.email) return;
+
+    setUsers(prev => {
+      const normalizedEmail = normalizeEmail(user.email);
+      let found = false;
+
+      const updated = prev.map(item => {
+        if (normalizeEmail(item.email) === normalizedEmail) {
+          found = true;
+          return {
+            ...item,
+            name: user.name || item.name || user.email,
+            picture: user.picture || item.picture || "",
+          };
+        }
+        return item;
+      });
+
+      if (!found) {
+        updated.push({
+          email: user.email.trim(),
+          name: user.name || user.email,
+          picture: user.picture || "",
+          role: normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL) ? "Admin" : "Viewer",
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      return ensureDefaultAdmin(updated);
+    });
+  }, [user, isUsersReady]);
+
   const initializeGoogle = useCallback(() => {
     if (!isScriptLoaded || !window.google?.accounts?.id || !GOOGLE_CLIENT_ID) return;
 
@@ -107,10 +232,83 @@ export default function App() {
 
   useEffect(() => { initializeGoogle(); }, [initializeGoogle]);
 
+  const handleCreateUser = useCallback((newUser) => {
+    if (!newUser?.email) return;
+
+    const normalizedEmail = normalizeEmail(newUser.email);
+    const role = ROLES.includes(newUser.role) ? newUser.role : "Viewer";
+
+    setUsers(prev => {
+      if (prev.some(item => normalizeEmail(item.email) === normalizedEmail)) {
+        return prev;
+      }
+
+      const record = {
+        email: newUser.email.trim(),
+        name: newUser.name || newUser.email,
+        picture: newUser.picture || "",
+        role,
+        createdAt: newUser.createdAt || new Date().toISOString(),
+      };
+
+      return ensureDefaultAdmin([...prev, record]);
+    });
+  }, []);
+
+  const handleUpdateUserRole = useCallback((email, role) => {
+    if (!email || !ROLES.includes(role)) return;
+
+    const normalizedEmail = normalizeEmail(email);
+
+    if (normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL)) {
+      return;
+    }
+
+    setUsers(prev => {
+      const updated = prev.map(userRecord => {
+        if (normalizeEmail(userRecord.email) === normalizedEmail) {
+          return { ...userRecord, role };
+        }
+        return userRecord;
+      });
+
+      return ensureDefaultAdmin(updated);
+    });
+  }, []);
+
+  const handleDeleteUser = useCallback((email) => {
+    if (!email) return;
+
+    const normalizedEmail = normalizeEmail(email);
+
+    if (normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL)) {
+      return;
+    }
+
+    setUsers(prev => {
+      const filtered = prev.filter(userRecord => normalizeEmail(userRecord.email) !== normalizedEmail);
+      return ensureDefaultAdmin(filtered);
+    });
+  }, []);
+
   const signOut = () => {
     setUser(null);
     setActiveView("home");
   };
+
+  const currentUserRecord = useMemo(
+    () => users.find(item => normalizeEmail(item.email) === normalizeEmail(user?.email)),
+    [users, user]
+  );
+
+  const currentRole = currentUserRecord?.role || "Viewer";
+  const isAdmin = currentRole === "Admin";
+
+  useEffect(() => {
+    if (activeView === "admin" && !isAdmin) {
+      setActiveView("home");
+    }
+  }, [activeView, isAdmin]);
 
   if (!user) {
     return (
@@ -141,10 +339,28 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #e2e8f0 0%, #f8fafc 40%, #f8fafc 100%)" }}>
-      <Navbar active={activeView} onNavigate={setActiveView} user={user} onSignOut={signOut} />
+      <Navbar
+        active={activeView}
+        onNavigate={setActiveView}
+        user={user}
+        onSignOut={signOut}
+        showAdmin={isAdmin}
+      />
       <main style={{ minHeight: "calc(100vh - 72px)" }}>
-        {activeView === "home" && <Home user={user} />}
+        {activeView === "home" && <Home user={user} role={currentRole} />}
         {activeView === "licenses" && <Licenses />}
+        {activeView === "admin" && isAdmin && (
+          <Admin
+            users={users}
+            roles={ROLES}
+            onCreateUser={handleCreateUser}
+            onUpdateUserRole={handleUpdateUserRole}
+            onDeleteUser={handleDeleteUser}
+            currentUserEmail={user.email}
+            defaultAdminEmail={DEFAULT_ADMIN_EMAIL}
+            allowedDomain={ALLOWED_DOMAIN}
+          />
+        )}
       </main>
     </div>
   );

@@ -31,7 +31,7 @@ const bodyStyle = {
   lineHeight: 1.6,
 };
 
-export default function Home({ user }) {
+export default function Home({ user, role = "Viewer" }) {
   return (
     <div style={containerStyle}>
       <section style={cardStyle}>
@@ -43,6 +43,26 @@ export default function Home({ user }) {
           Este es tu panel principal de herramientas TRÓPICA. Desde aquí puedes explorar las licencias
           disponibles, sus alcances y los casos de uso recomendados para cada miembro del equipo.
         </p>
+        <div
+          style={{
+            marginTop: 18,
+            padding: "12px 16px",
+            borderRadius: 14,
+            border: "1px solid #cbd5f5",
+            background: "#f8fafc",
+            color: "#1e293b",
+            fontSize: 14,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <strong style={{ fontSize: 13, color: "#1d4ed8", letterSpacing: "0.04em" }}>TU PRIVILEGIO</strong>
+          <span>
+            Actualmente tienes permisos de <b>{role}</b>. Esto define qué acciones puedes realizar dentro del
+            núcleo, incluyendo la administración de usuarios y licencias.
+          </span>
+        </div>
       </section>
       <section style={{ ...cardStyle, display: "grid", gap: 18 }}>
         <h2 style={{ ...titleStyle, fontSize: 20 }}>¿Qué encontrarás?</h2>
