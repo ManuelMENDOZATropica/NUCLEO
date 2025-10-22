@@ -1,0 +1,236 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+const layoutStyle = {
+  maxWidth: 1120,
+  margin: "0 auto",
+  padding: "32px 24px 80px",
+  display: "grid",
+  gap: 24,
+};
+
+const gridStyle = {
+  display: "grid",
+  gap: 20,
+};
+
+const categoryHeaderStyle = {
+  margin: 0,
+  fontSize: 22,
+  color: "#0f172a",
+};
+
+const cardListStyle = {
+  display: "grid",
+  gap: 16,
+  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+};
+
+const cardStyle = isSelected => ({
+  background: "#ffffff",
+  borderRadius: 18,
+  border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
+  padding: 20,
+  boxShadow: isSelected ? "0 18px 38px rgba(37, 99, 235, 0.15)" : "0 10px 28px rgba(15, 23, 42, 0.08)",
+  cursor: "pointer",
+  transition: "all 0.16s ease",
+  display: "grid",
+  gap: 12,
+});
+
+const badgeStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontSize: 12,
+  fontWeight: 600,
+  background: "#eff6ff",
+  color: "#1d4ed8",
+  padding: "6px 10px",
+  borderRadius: 999,
+};
+
+const detailStyle = {
+  background: "#fff",
+  borderRadius: 20,
+  border: "1px solid #e2e8f0",
+  boxShadow: "0 20px 44px rgba(15, 23, 42, 0.1)",
+  padding: 28,
+  display: "grid",
+  gap: 18,
+};
+
+export default function Licenses() {
+  const [catalog, setCatalog] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        setLoading(true);
+        const response = await fetch("/json-db/licenses.json", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("No se pudo cargar el catálogo de licencias");
+        }
+        const json = await response.json();
+        if (!cancelled) {
+          setCatalog(json || {});
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || "Error desconocido");
+          setCatalog({});
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const flattenedLicenses = useMemo(() => {
+    const entries = Object.entries(catalog || {});
+    return entries.flatMap(([category, items]) =>
+      (Array.isArray(items) ? items : []).map(item => ({ ...item, category }))
+    );
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!selected && flattenedLicenses.length > 0) {
+      setSelected(flattenedLicenses[0]);
+    }
+  }, [flattenedLicenses, selected]);
+
+  if (loading) {
+    return (
+      <div style={{ ...layoutStyle, textAlign: "center", color: "#475569" }}>
+        Cargando licencias…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ ...layoutStyle, textAlign: "center", color: "#b91c1c" }}>
+        {error}
+      </div>
+    );
+  }
+
+  return (
+    <div style={layoutStyle}>
+      {Object.entries(catalog).map(([category, licenses]) => (
+        <section key={category} style={gridStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <h2 style={categoryHeaderStyle}>{category}</h2>
+            <span style={badgeStyle}>{licenses?.length || 0} licencias</span>
+          </div>
+          <div style={cardListStyle}>
+            {(licenses || []).map(license => {
+              const isSelected = selected?.nombre === license.nombre && selected?.category === category;
+              return (
+                <article
+                  key={license.nombre}
+                  style={cardStyle(isSelected)}
+                  onClick={() => setSelected({ ...license, category })}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ height: 44, width: 44, borderRadius: 14, background: "#f8fafc", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {license.logo ? (
+                        <img
+                          src={license.logo}
+                          alt={license.nombre}
+                          style={{ maxHeight: "70%", maxWidth: "70%", objectFit: "contain" }}
+                        />
+                      ) : (
+                        <span style={{ fontWeight: 700, color: "#0f172a" }}>
+                          {license.nombre.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <strong style={{ color: "#0f172a" }}>{license.nombre}</strong>
+                      <span style={{ fontSize: 12, color: "#475569" }}>{license.licencia}</span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 13, color: "#1d4ed8", fontWeight: 500 }}>Ver detalle</span>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
+      {selected ? (
+        <aside style={detailStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ height: 64, width: 64, borderRadius: 18, background: "#f1f5f9", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {selected.logo ? (
+                  <img
+                    src={selected.logo}
+                    alt={selected.nombre}
+                    style={{ maxHeight: "70%", maxWidth: "70%", objectFit: "contain" }}
+                  />
+                ) : (
+                  <span style={{ fontWeight: 700, fontSize: 20, color: "#0f172a" }}>
+                    {selected.nombre.charAt(0)}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>{selected.category}</span>
+                <h3 style={{ margin: 0, fontSize: 24, color: "#0f172a" }}>{selected.nombre}</h3>
+                <span style={{ fontSize: 14, color: "#475569" }}>{selected.licencia}</span>
+              </div>
+            </div>
+            <a
+              href={selected.enlace}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: "#1d4ed8",
+                color: "#f8fafc",
+                padding: "10px 18px",
+                borderRadius: 12,
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Abrir recurso
+            </a>
+          </div>
+          {Array.isArray(selected.subHerramientas) && selected.subHerramientas.length > 0 && (
+            <div style={{ display: "grid", gap: 10 }}>
+              <h4 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Sub-herramientas</h4>
+              <ul style={{ margin: 0, paddingLeft: 20, color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
+                {selected.subHerramientas.map(item => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Array.isArray(selected.usos) && selected.usos.length > 0 && (
+            <div style={{ display: "grid", gap: 10 }}>
+              <h4 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Usos recomendados</h4>
+              <ul style={{ margin: 0, paddingLeft: 20, color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
+                {selected.usos.map(item => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </aside>
+      ) : null}
+    </div>
+  );
+}
