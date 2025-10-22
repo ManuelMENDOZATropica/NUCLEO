@@ -78,7 +78,16 @@ const navStyles = {
   },
 };
 
-export default function Navbar({ active = "home", onNavigate, user, onSignOut }) {
+export default function Navbar({ active = "home", onNavigate, user, onSignOut, showAdmin = false }) {
+  const menuItems = [
+    { id: "home", label: "Inicio" },
+    { id: "licenses", label: "Licencias" },
+  ];
+
+  if (showAdmin) {
+    menuItems.push({ id: "admin", label: "Usuarios" });
+  }
+
   return (
     <header style={navStyles.container}>
       <div style={navStyles.inner}>
@@ -87,10 +96,7 @@ export default function Navbar({ active = "home", onNavigate, user, onSignOut })
           <span style={navStyles.brandAccent}>toolkit</span>
         </div>
         <nav style={navStyles.menu}>
-          {[
-            { id: "home", label: "Inicio" },
-            { id: "licenses", label: "Licencias" },
-          ].map(item => (
+          {menuItems.map(item => (
             <button
               key={item.id}
               type="button"
