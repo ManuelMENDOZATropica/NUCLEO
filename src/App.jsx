@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import Licenses from "./pages/Licenses";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const ALLOWED_DOMAIN = "tropica.me";
 const STORAGE_KEY = "tropica:user";
 
-// Decodifica el JWT que regresa Google Identity Services
 function decodeJwtPayload(token) {
   if (!token) return null;
   try {
@@ -28,6 +30,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isButtonRendered, setIsButtonRendered] = useState(false);
+  const [activeView, setActiveView] = useState("home");
   const buttonRef = useRef(null);
 
   const isAllowed = useMemo(
@@ -40,7 +43,6 @@ export default function App() {
     else localStorage.removeItem(STORAGE_KEY);
   }, [user]);
 
-  // Cargar script de Google Identity Services dinámicamente
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
       setError("Falta VITE_GOOGLE_CLIENT_ID en tu .env");
@@ -66,7 +68,6 @@ export default function App() {
     document.head.appendChild(s);
   }, []);
 
-  // Callback cuando Google regresa el credential (JWT)
   const handleCredentialResponse = useCallback((response) => {
     const payload = decodeJwtPayload(response?.credential);
     const email = payload?.email || "";
@@ -81,7 +82,6 @@ export default function App() {
     setError("");
   }, [isAllowed]);
 
-  // Inicializar botón y prompt
   const initializeGoogle = useCallback(() => {
     if (!isScriptLoaded || !window.google?.accounts?.id || !GOOGLE_CLIENT_ID) return;
 
@@ -102,34 +102,36 @@ export default function App() {
       setIsButtonRendered(true);
     }
 
-    // Opcional: mostrar prompt “One Tap” si aplica
     window.google.accounts.id.prompt();
   }, [handleCredentialResponse, isButtonRendered, isScriptLoaded]);
 
   useEffect(() => { initializeGoogle(); }, [initializeGoogle]);
 
-  const signOut = () => setUser(null);
+  const signOut = () => {
+    setUser(null);
+    setActiveView("home");
+  };
 
   if (!user) {
     return (
-      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,background:"#f7f7f8"}}>
-        <div style={{width:"100%",maxWidth:420,background:"#fff",borderRadius:16,boxShadow:"0 10px 30px rgba(0,0,0,.06)",padding:24}}>
-          <h1 style={{fontSize:22,fontWeight:600,marginBottom:8}}>Acceso TRÓPICA</h1>
-          <p style={{fontSize:13,color:"#6b7280",marginBottom:16}}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "#f7f7f8" }}>
+        <div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,.06)", padding: 24 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Acceso TRÓPICA</h1>
+          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
             Inicia sesión con tu cuenta de Google corporativa <code>@{ALLOWED_DOMAIN}</code>.
           </p>
-          <div ref={buttonRef} style={{display:"flex",justifyContent:"center"}} />
+          <div ref={buttonRef} style={{ display: "flex", justifyContent: "center" }} />
           {(!GOOGLE_CLIENT_ID || !isScriptLoaded) && (
-            <p style={{fontSize:13,color:"#6b7280",marginTop:12}}>
+            <p style={{ fontSize: 13, color: "#6b7280", marginTop: 12 }}>
               {GOOGLE_CLIENT_ID ? "Cargando Google Sign-In…" : "Configura VITE_GOOGLE_CLIENT_ID en tu .env"}
             </p>
           )}
           {error && (
-            <div style={{marginTop:12,fontSize:13,color:"#b91c1c",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:12,padding:12}}>
+            <div style={{ marginTop: 12, fontSize: 13, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: 12 }}>
               {error}
             </div>
           )}
-          <p style={{marginTop:12,fontSize:12,color:"#9ca3af",lineHeight:1.5}}>
+          <p style={{ marginTop: 12, fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>
             Este login usa Google Identity Services y valida el dominio <code>@{ALLOWED_DOMAIN}</code>.
           </p>
         </div>
@@ -138,32 +140,12 @@ export default function App() {
   }
 
   return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,background:"#f7f7f8"}}>
-      <div style={{width:"100%",maxWidth:520,background:"#fff",borderRadius:16,boxShadow:"0 10px 30px rgba(0,0,0,.06)",padding:24}}>
-        <div style={{display:"flex",gap:14,alignItems:"center"}}>
-          <div style={{height:48,width:48,borderRadius:999,overflow:"hidden",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
-            {user.picture
-              ? <img src={user.picture} alt={user.name || user.email} style={{height:"100%",width:"100%",objectFit:"cover"}} referrerPolicy="no-referrer"/>
-              : (user.name || user.email || "U").charAt(0).toUpperCase()
-            }
-          </div>
-          <div>
-            <h2 style={{fontSize:18,fontWeight:700,margin:0}}>Hola, {user.name || "usuario"}</h2>
-            <p style={{fontSize:13,color:"#6b7280",margin:0}}>{user.email}</p>
-          </div>
-        </div>
-
-        <div style={{marginTop:16,border:"1px solid #e5e7eb",borderRadius:16,padding:14,fontSize:14,color:"#4b5563"}}>
-          Sesión activa. App mínima con solo login de Google y validación <code>@{ALLOWED_DOMAIN}</code>.
-        </div>
-
-        <div style={{marginTop:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <p style={{fontSize:12,color:"#9ca3af",margin:0}}>Tip: cierra sesión para probar otro usuario.</p>
-          <button onClick={signOut} style={{border:"1px solid #d1d5db",borderRadius:14,padding:"8px 12px",fontSize:13,background:"#fff"}}>
-            Cerrar sesión
-          </button>
-        </div>
-      </div>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #e2e8f0 0%, #f8fafc 40%, #f8fafc 100%)" }}>
+      <Navbar active={activeView} onNavigate={setActiveView} user={user} onSignOut={signOut} />
+      <main style={{ minHeight: "calc(100vh - 72px)" }}>
+        {activeView === "home" && <Home user={user} />}
+        {activeView === "licenses" && <Licenses />}
+      </main>
     </div>
   );
 }
