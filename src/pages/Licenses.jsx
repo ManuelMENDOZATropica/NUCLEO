@@ -59,6 +59,86 @@ const detailStyle = {
   gap: 18,
 };
 
+function LicenseDetail({ license }) {
+  if (!license) return null;
+
+  return (
+    <aside style={detailStyle}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              height: 64,
+              width: 64,
+              borderRadius: 18,
+              background: "#f1f5f9",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {license.logo ? (
+              <img
+                src={license.logo}
+                alt={license.nombre}
+                style={{ maxHeight: "70%", maxWidth: "70%", objectFit: "contain" }}
+              />
+            ) : (
+              <span style={{ fontWeight: 700, fontSize: 20, color: "#0f172a" }}>
+                {license.nombre?.charAt(0) || "?"}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>{license.category}</span>
+            <h3 style={{ margin: 0, fontSize: 24, color: "#0f172a" }}>{license.nombre}</h3>
+            <span style={{ fontSize: 14, color: "#475569" }}>{license.licencia}</span>
+          </div>
+        </div>
+        {license.enlace ? (
+          <a
+            href={license.enlace}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              background: "#1d4ed8",
+              color: "#f8fafc",
+              padding: "10px 18px",
+              borderRadius: 12,
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Abrir recurso
+          </a>
+        ) : null}
+      </div>
+      {Array.isArray(license.subHerramientas) && license.subHerramientas.length > 0 && (
+        <div style={{ display: "grid", gap: 10 }}>
+          <h4 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Sub-herramientas</h4>
+          <ul style={{ margin: 0, paddingLeft: 20, color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
+            {license.subHerramientas.map(item => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {Array.isArray(license.usos) && license.usos.length > 0 && (
+        <div style={{ display: "grid", gap: 10 }}>
+          <h4 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Usos recomendados</h4>
+          <ul style={{ margin: 0, paddingLeft: 20, color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
+            {license.usos.map(item => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </aside>
+  );
+}
+
 export default function Licenses() {
   const [catalog, setCatalog] = useState({});
   const [loading, setLoading] = useState(true);
@@ -104,7 +184,20 @@ export default function Licenses() {
   }, [catalog]);
 
   useEffect(() => {
-    if (!selected && flattenedLicenses.length > 0) {
+    if (flattenedLicenses.length === 0) {
+      if (selected) {
+        setSelected(null);
+      }
+      return;
+    }
+
+    const hasSelected =
+      !!selected &&
+      flattenedLicenses.some(
+        item => item.nombre === selected.nombre && item.category === selected.category
+      );
+
+    if (!hasSelected) {
       setSelected(flattenedLicenses[0]);
     }
   }, [flattenedLicenses, selected]);
@@ -127,110 +220,64 @@ export default function Licenses() {
 
   return (
     <div style={layoutStyle}>
-      {Object.entries(catalog).map(([category, licenses]) => (
-        <section key={category} style={gridStyle}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <h2 style={categoryHeaderStyle}>{category}</h2>
-            <span style={badgeStyle}>{licenses?.length || 0} licencias</span>
-          </div>
-          <div style={cardListStyle}>
-            {(licenses || []).map(license => {
-              const isSelected = selected?.nombre === license.nombre && selected?.category === category;
-              return (
-                <article
-                  key={license.nombre}
-                  style={cardStyle(isSelected)}
-                  onClick={() => setSelected({ ...license, category })}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ height: 44, width: 44, borderRadius: 14, background: "#f8fafc", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {license.logo ? (
-                        <img
-                          src={license.logo}
-                          alt={license.nombre}
-                          style={{ maxHeight: "70%", maxWidth: "70%", objectFit: "contain" }}
-                        />
-                      ) : (
-                        <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                          {license.nombre.charAt(0)}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: "grid", gap: 4 }}>
-                      <strong style={{ color: "#0f172a" }}>{license.nombre}</strong>
-                      <span style={{ fontSize: 12, color: "#475569" }}>{license.licencia}</span>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 13, color: "#1d4ed8", fontWeight: 500 }}>Ver detalle</span>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+      {Object.entries(catalog).map(([category, licenses]) => {
+        const isSelectedCategory = selected?.category === category;
 
-      {selected ? (
-        <aside style={detailStyle}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ height: 64, width: 64, borderRadius: 18, background: "#f1f5f9", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {selected.logo ? (
-                  <img
-                    src={selected.logo}
-                    alt={selected.nombre}
-                    style={{ maxHeight: "70%", maxWidth: "70%", objectFit: "contain" }}
-                  />
-                ) : (
-                  <span style={{ fontWeight: 700, fontSize: 20, color: "#0f172a" }}>
-                    {selected.nombre.charAt(0)}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>{selected.category}</span>
-                <h3 style={{ margin: 0, fontSize: 24, color: "#0f172a" }}>{selected.nombre}</h3>
-                <span style={{ fontSize: 14, color: "#475569" }}>{selected.licencia}</span>
-              </div>
+        return (
+          <section key={category} style={gridStyle}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <h2 style={categoryHeaderStyle}>{category}</h2>
+              <span style={badgeStyle}>{licenses?.length || 0} licencias</span>
             </div>
-            <a
-              href={selected.enlace}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                background: "#1d4ed8",
-                color: "#f8fafc",
-                padding: "10px 18px",
-                borderRadius: 12,
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              Abrir recurso
-            </a>
-          </div>
-          {Array.isArray(selected.subHerramientas) && selected.subHerramientas.length > 0 && (
-            <div style={{ display: "grid", gap: 10 }}>
-              <h4 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Sub-herramientas</h4>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
-                {selected.subHerramientas.map(item => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+            <div style={cardListStyle}>
+              {(licenses || []).map(license => {
+                const isSelected = selected?.nombre === license.nombre && isSelectedCategory;
+                return (
+                  <article
+                    key={license.nombre}
+                    style={cardStyle(isSelected)}
+                    onClick={() => setSelected({ ...license, category })}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          height: 44,
+                          width: 44,
+                          borderRadius: 14,
+                          background: "#f8fafc",
+                          overflow: "hidden",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {license.logo ? (
+                          <img
+                            src={license.logo}
+                            alt={license.nombre}
+                            style={{ maxHeight: "70%", maxWidth: "70%", objectFit: "contain" }}
+                          />
+                        ) : (
+                          <span style={{ fontWeight: 700, color: "#0f172a" }}>
+                            {license.nombre.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <strong style={{ color: "#0f172a" }}>{license.nombre}</strong>
+                        <span style={{ fontSize: 12, color: "#475569" }}>{license.licencia}</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 13, color: "#1d4ed8", fontWeight: 500 }}>Ver detalle</span>
+                  </article>
+                );
+              })}
             </div>
-          )}
-          {Array.isArray(selected.usos) && selected.usos.length > 0 && (
-            <div style={{ display: "grid", gap: 10 }}>
-              <h4 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Usos recomendados</h4>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
-                {selected.usos.map(item => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </aside>
-      ) : null}
+
+            {isSelectedCategory && selected ? <LicenseDetail license={selected} /> : null}
+          </section>
+        );
+      })}
     </div>
   );
 }
