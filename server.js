@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DATA_DIR = join(__dirname, 'data');
 const DATA_FILE = join(DATA_DIR, 'publications.json');
+const CATEGORIES_FILE = join(DATA_DIR, 'categories.json');
 const POSTS_DIR = join(DATA_DIR, 'posts');
 const POSTS_FILE = join(POSTS_DIR, 'posts.json');
 const PORT = Number.parseInt(process.env.PORT ?? '5000', 10);
@@ -19,6 +20,15 @@ async function ensureDataFile() {
   } catch {
     await mkdir(DATA_DIR, { recursive: true });
     await writeFile(DATA_FILE, '[]', 'utf8');
+  }
+}
+
+async function ensureCategoriesFile() {
+  try {
+    await access(CATEGORIES_FILE, constants.F_OK);
+  } catch {
+    await mkdir(DATA_DIR, { recursive: true });
+    await writeFile(CATEGORIES_FILE, '[]', 'utf8');
   }
 }
 
@@ -52,6 +62,29 @@ async function readPublications() {
 async function writePublications(publications) {
   await ensureDataFile();
   await writeFile(DATA_FILE, JSON.stringify(publications, null, 2), 'utf8');
+}
+
+async function readCategories() {
+  await ensureCategoriesFile();
+  const content = await readFile(CATEGORIES_FILE, 'utf8');
+  if (!content.trim()) {
+    return [];
+  }
+  try {
+    const data = JSON.parse(content);
+    if (Array.isArray(data)) {
+      return data;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error parsing categories.json', error);
+    throw new Error('Error reading categories file');
+  }
+}
+
+async function writeCategories(categories) {
+  await ensureCategoriesFile();
+  await writeFile(CATEGORIES_FILE, JSON.stringify(categories, null, 2), 'utf8');
 }
 
 async function readPosts() {
@@ -123,6 +156,9 @@ function matchRoute(pathname) {
   if (pathname === '/api/posts') {
     return { resource: 'posts', type: 'collection' };
   }
+  if (pathname === '/api/categories') {
+    return { resource: 'categories', type: 'collection' };
+  }
 
   const publicationMatch = pathname.match(/^\/api\/publications\/(.+)$/);
   if (publicationMatch) {
@@ -132,6 +168,11 @@ function matchRoute(pathname) {
   const postMatch = pathname.match(/^\/api\/posts\/(.+)$/);
   if (postMatch) {
     return { resource: 'posts', type: 'item', id: decodeURIComponent(postMatch[1]) };
+  }
+
+  const categoryMatch = pathname.match(/^\/api\/categories\/(.+)$/);
+  if (categoryMatch) {
+    return { resource: 'categories', type: 'item', id: decodeURIComponent(categoryMatch[1]) };
   }
 
   return null;
@@ -163,8 +204,25 @@ function buildSlug(id, slug) {
   return baseId ? `publicaciones/${baseId}` : '';
 }
 
+function buildCategorySlug(id, slug) {
+  const slugValue = sanitizeString(slug);
+  if (slugValue) {
+    return slugValue;
+  }
+  const baseId = sanitizeString(id);
+  return baseId ? `categorias/${baseId}` : '';
+}
+
 function generateId() {
   return crypto.randomUUID();
+}
+
+function normalizeEmail(email) {
+  return sanitizeString(email).toLowerCase();
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function normalizeStatus(status) {
@@ -174,6 +232,45 @@ function normalizeStatus(status) {
     return normalized;
   }
   return 'draft';
+}
+
+function normalizeCategoryStatus(status) {
+  const allowed = new Set(['active', 'archived']);
+  const normalized = sanitizeString(status).toLowerCase();
+  if (allowed.has(normalized)) {
+    return normalized;
+  }
+  return 'active';
+}
+
+function normalizeCategoryId(id) {
+  const normalized = sanitizeString(id).toLowerCase();
+  if (!normalized) {
+    return '';
+  }
+  return normalized.replace(/\s+/g, '-');
+}
+
+function applyCategoryUpdates(existing, updates) {
+  const now = new Date().toISOString();
+  const next = {
+    ...existing,
+    name: updates.name ? sanitizeString(updates.name) : existing.name,
+    description: updates.description ? sanitizeString(updates.description) : existing.description,
+    status: updates.status ? normalizeCategoryStatus(updates.status) : existing.status,
+    slug: updates.slug ? buildCategorySlug(existing.id, updates.slug) : existing.slug,
+    updatedAt: now
+  };
+
+  if (!next.name) {
+    throw new Error('El nombre de la categoría no puede estar vacío.');
+  }
+
+  if (!next.description) {
+    throw new Error('La descripción de la categoría no puede estar vacía.');
+  }
+
+  return next;
 }
 
 function applyPublicationUpdates(existing, updates) {
@@ -332,6 +429,104 @@ const server = createServer(async (req, res) => {
       if (method === 'DELETE') {
         publications.splice(index, 1);
         await writePublications(publications);
+        sendJson(res, 204);
+        return;
+      }
+
+      sendJson(res, 405, { message: 'Método no permitido.' });
+      return;
+    }
+
+    if (route.resource === 'categories' && route.type === 'collection') {
+      if (method === 'GET') {
+        const categories = await readCategories();
+        sendJson(res, 200, categories);
+        return;
+      }
+
+      if (method === 'POST') {
+        const payload = await parseRequestBody(req);
+        const id = normalizeCategoryId(payload.id) || generateId();
+        const name = sanitizeString(payload.name);
+        const description = sanitizeString(payload.description);
+        const status = normalizeCategoryStatus(payload.status);
+        const createdBy = normalizeEmail(payload.createdBy);
+        const slug = buildCategorySlug(id, payload.slug);
+
+        if (!id || !name || !description || !createdBy) {
+          sendJson(res, 400, {
+            message:
+              'Los campos id, name, description y createdBy son obligatorios para crear una categoría.'
+          });
+          return;
+        }
+
+        if (!isValidEmail(createdBy)) {
+          sendJson(res, 400, { message: 'El campo createdBy debe ser un correo válido.' });
+          return;
+        }
+
+        const categories = await readCategories();
+
+        if (categories.some((category) => category.id === id)) {
+          sendJson(res, 409, { message: `Ya existe una categoría con id ${id}.` });
+          return;
+        }
+
+        const now = new Date().toISOString();
+        const newCategory = {
+          id,
+          slug,
+          name,
+          description,
+          status,
+          createdAt: now,
+          updatedAt: now,
+          createdBy
+        };
+
+        categories.push(newCategory);
+        await writeCategories(categories);
+        sendJson(res, 201, newCategory);
+        return;
+      }
+
+      sendJson(res, 405, { message: 'Método no permitido.' });
+      return;
+    }
+
+    if (route.resource === 'categories' && route.type === 'item') {
+      const categories = await readCategories();
+      const index = categories.findIndex((category) => category.id === route.id);
+      if (index === -1) {
+        sendJson(res, 404, { message: `No se encontró la categoría con id ${route.id}.` });
+        return;
+      }
+
+      if (method === 'GET') {
+        sendJson(res, 200, categories[index]);
+        return;
+      }
+
+      if (method === 'PUT') {
+        const payload = await parseRequestBody(req);
+        let updatedCategory;
+        try {
+          updatedCategory = applyCategoryUpdates(categories[index], payload);
+        } catch (error) {
+          sendJson(res, 400, { message: error.message });
+          return;
+        }
+
+        categories[index] = updatedCategory;
+        await writeCategories(categories);
+        sendJson(res, 200, updatedCategory);
+        return;
+      }
+
+      if (method === 'DELETE') {
+        categories.splice(index, 1);
+        await writeCategories(categories);
         sendJson(res, 204);
         return;
       }
