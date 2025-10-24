@@ -130,7 +130,7 @@ export default function Home({ user, role = "Viewer" }) {
       <section style={cardStyle}>
         <h2 style={{ ...titleStyle, fontSize: 20, marginBottom: 20 }}>Formulario de Prueba n8n</h2>
         <form 
-          action="https://tropica.app.n8n.cloud/webhook-test/31d2811f-a9ed-4220-8157-ed1a95b3d64b" 
+          action="https://tropica.app.n8n.cloud/webhook/31d2811f-a9ed-4220-8157-ed1a95b3d64b"
           method="POST"
         >
           <div style={formGroupStyle}>
