@@ -50,9 +50,9 @@ const inputStyle = {
   borderRadius: 8,
   border: "1px solid #cbd5e1",
   fontSize: 15,
-  width: "100%", // Hace que ocupe el ancho del formulario
-  boxSizing: "border-box", // Importante para que el padding no afecte el ancho
-  background: "#fff", // Asegura fondo blanco para el select
+  width: "100%", 
+  boxSizing: "border-box", 
+  background: "#fff", 
 };
 
 const buttonStyle = {
@@ -131,7 +131,7 @@ export default function Home({ user, role = "Viewer" }) {
       <section style={cardStyle}>
         <h2 style={{ ...titleStyle, fontSize: 20, marginBottom: 20 }}>Crear Nuevo Proyecto</h2>
         <form 
-          action="https://tropica.app.n8n.cloud/webhook-test/31d2811f-a9ed-4220-8157-ed1a95b3d64b" 
+          action="https://tropica.app.n8n.cloud/webhook/31d2811f-a9ed-4220-8157-ed1a95b3d64b" 
           method="POST"
         >
           
