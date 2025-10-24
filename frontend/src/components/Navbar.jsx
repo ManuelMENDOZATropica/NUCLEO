@@ -82,6 +82,7 @@ export default function Navbar({ active = "home", onNavigate, user, onSignOut, s
   const menuItems = [
     { id: "home", label: "Inicio" },
     { id: "licenses", label: "Licencias" },
+    { id: "automations", label: "Automatizaciones" },
   ];
 
   if (showAdmin) {
