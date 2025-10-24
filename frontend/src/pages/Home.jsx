@@ -127,51 +127,6 @@ export default function Home({ user, role = "Viewer" }) {
         </div>
       </section>
 
-      {/* --- INICIO DEL FORMULARIO FUNCIONAL --- */}
-      <section style={cardStyle}>
-        <h2 style={{ ...titleStyle, fontSize: 20, marginBottom: 20 }}>Crear Nuevo Proyecto</h2>
-        <form 
-          action="https://tropica.app.n8n.cloud/webhook/31d2811f-a9ed-4220-8157-ed1a95b3d64b" 
-          method="POST"
-        >
-          
-          {/* Campo: Nombre del proyecto */}
-          <div style={formGroupStyle}>
-            <label htmlFor="nombre_proyecto" style={labelStyle}>Nombre del proyecto:</label>
-            <input 
-              type="text" 
-              id="nombre_proyecto" 
-              name="name" // <-- CRÍTICO: Coincide con tu código n8n
-              style={inputStyle} 
-              placeholder="Ej: Campaña Verano | MX"
-              required
-            />
-          </div>
-          
-          {/* Campo: País (Dropdown) */}
-          <div style={formGroupStyle}>
-            <label htmlFor="pais_proyecto" style={labelStyle}>País:</label>
-            <select 
-              id="pais_proyecto" 
-              name="País" // <-- CRÍTICO: Coincide con tu código n8n (con tilde)
-              style={inputStyle}
-              required
-              defaultValue="" // Para forzar al usuario a elegir una opción
-            >
-              <option value="" disabled>Selecciona un país</option>
-              <option value="AR">Argentina</option>
-              <option value="BR">Brasil</option>
-              <option value="CO">Colombia</option>
-              <option value="MX">México</option>
-            </select>
-          </div>
-
-          <button type="submit" style={buttonStyle}>
-            Enviar a n8n
-          </button>
-        </form>
-      </section>
-      {/* --- FIN DEL FORMULARIO FUNCIONAL --- */}
 
     </div>
   );
