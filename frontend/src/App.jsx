@@ -202,63 +202,8 @@ export default function App() {
     setError("");
   }, [isAllowed]);
 
-  useEffect(() => {
-    if (!isUsersReady || !user?.email) return;
-
-    const normalizedEmail = normalizeEmail(user.email);
-    const existing = users.find(item => normalizeEmail(item.email) === normalizedEmail);
-
-    if (!existing) {
-      const payload = {
-        email: user.email.trim(),
-        name: user.name || user.email,
-        picture: user.picture || "",
-        role: normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL) ? "Admin" : "Viewer",
-        createdAt: new Date().toISOString(),
-      };
-
-      handleCreateUser(payload);
-    } else {
-      setUsers(prev =>
-        ensureDefaultAdmin(
-          prev.map(item =>
-            normalizeEmail(item.email) === normalizedEmail
-              ? {
-                  ...item,
-                  name: user.name || item.name || user.email,
-                  picture: user.picture || item.picture || "",
-                }
-              : item
-          )
-        )
-      );
-    }
-  }, [user, isUsersReady, users, handleCreateUser]);
-
-  const initializeGoogle = useCallback(() => {
-    if (!isScriptLoaded || !window.google?.accounts?.id || !GOOGLE_CLIENT_ID) return;
-
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleCredentialResponse,
-      ux_mode: "popup",
-    });
-
-    if (buttonRef.current && !isButtonRendered) {
-      window.google.accounts.id.renderButton(buttonRef.current, {
-        theme: "filled_blue",
-        size: "large",
-        type: "standard",
-        shape: "pill",
-        text: "signin_with",
-      });
-      setIsButtonRendered(true);
-    }
-
-    window.google.accounts.id.prompt();
-  }, [handleCredentialResponse, isButtonRendered, isScriptLoaded]);
-
-  useEffect(() => { initializeGoogle(); }, [initializeGoogle]);
+  // --- BLOQUE DE FUNCIONES MOVIDO ---
+  // Se movieron aquí para solucionar el error "Temporal Dead Zone".
 
   const handleCreateUser = useCallback(async (newUser) => {
     if (!newUser?.email) {
@@ -358,6 +303,76 @@ export default function App() {
       return { ok: false, error: "No se pudo conectar con el servidor" };
     }
   }, []);
+
+  // --- FIN DEL BLOQUE MOVIDO ---
+
+
+  // --- useEffect CORREGIDO (para el bucle infinito) ---
+  useEffect(() => {
+    if (!isUsersReady || !user?.email) return;
+
+    const normalizedEmail = normalizeEmail(user.email);
+    const existing = users.find(item => normalizeEmail(item.email) === normalizedEmail);
+
+    if (!existing) {
+      const payload = {
+        email: user.email.trim(),
+        name: user.name || user.email,
+        picture: user.picture || "",
+        role: normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL) ? "Admin" : "Viewer",
+        createdAt: new Date().toISOString(),
+      };
+
+      handleCreateUser(payload);
+    } else {
+      // Comparamos los datos nuevos con los existentes.
+      const newName = user.name || existing.name || user.email;
+      const newPicture = user.picture || existing.picture || "";
+
+      // Solo llamamos a setUsers SI hay un cambio real.
+      if (existing.name !== newName || existing.picture !== newPicture) {
+        setUsers(prev =>
+          ensureDefaultAdmin(
+            prev.map(item =>
+              normalizeEmail(item.email) === normalizedEmail
+                ? {
+                    ...item,
+                    name: newName,
+                    picture: newPicture,
+                  }
+                : item
+            )
+          )
+        );
+      }
+      // Si los datos son iguales, no hacemos nada y el bucle se detiene.
+    }
+  }, [user, isUsersReady, users, handleCreateUser]);
+
+  const initializeGoogle = useCallback(() => {
+    if (!isScriptLoaded || !window.google?.accounts?.id || !GOOGLE_CLIENT_ID) return;
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse,
+      ux_mode: "popup",
+    });
+
+    if (buttonRef.current && !isButtonRendered) {
+      window.google.accounts.id.renderButton(buttonRef.current, {
+        theme: "filled_blue",
+        size: "large",
+        type: "standard",
+        shape: "pill",
+        text: "signin_with",
+      });
+      setIsButtonRendered(true);
+    }
+
+    window.google.accounts.id.prompt();
+  }, [handleCredentialResponse, isButtonRendered, isScriptLoaded]);
+
+  useEffect(() => { initializeGoogle(); }, [initializeGoogle]);
 
   const signOut = () => {
     setUser(null);
