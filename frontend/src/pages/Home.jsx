@@ -31,7 +31,7 @@ const bodyStyle = {
   lineHeight: 1.6,
 };
 
-// --- Nuevos estilos para el formulario ---
+// --- Estilos para el formulario ---
 const formGroupStyle = {
   display: "flex",
   flexDirection: "column",
@@ -52,6 +52,7 @@ const inputStyle = {
   fontSize: 15,
   width: "100%", // Hace que ocupe el ancho del formulario
   boxSizing: "border-box", // Importante para que el padding no afecte el ancho
+  background: "#fff", // Asegura fondo blanco para el select
 };
 
 const buttonStyle = {
@@ -63,9 +64,9 @@ const buttonStyle = {
   cursor: "pointer",
   fontWeight: 600,
   fontSize: 15,
-  width: "auto", // O '100%' si quieres que ocupe todo el ancho
+  width: "auto", 
 };
-// --- Fin de nuevos estilos ---
+// --- Fin de estilos ---
 
 export default function Home({ user, role = "Viewer" }) {
   return (
@@ -126,33 +127,43 @@ export default function Home({ user, role = "Viewer" }) {
         </div>
       </section>
 
-      {/* --- INICIO DEL FORMULARIO AÑADIDO --- */}
+      {/* --- INICIO DEL FORMULARIO FUNCIONAL --- */}
       <section style={cardStyle}>
-        <h2 style={{ ...titleStyle, fontSize: 20, marginBottom: 20 }}>Formulario de Prueba n8n</h2>
+        <h2 style={{ ...titleStyle, fontSize: 20, marginBottom: 20 }}>Crear Nuevo Proyecto</h2>
         <form 
           action="https://tropica.app.n8n.cloud/webhook-test/31d2811f-a9ed-4220-8157-ed1a95b3d64b" 
           method="POST"
         >
+          
+          {/* Campo: Nombre del proyecto */}
           <div style={formGroupStyle}>
-            <label htmlFor="nombre_usuario" style={labelStyle}>Nombre:</label>
+            <label htmlFor="nombre_proyecto" style={labelStyle}>Nombre del proyecto:</label>
             <input 
               type="text" 
-              id="nombre_usuario" 
-              name="nombre" 
+              id="nombre_proyecto" 
+              name="Nombre del proyecto" // <-- CRÍTICO: Coincide con tu código n8n
               style={inputStyle} 
-              placeholder="Escribe tu nombre"
+              placeholder="Ej: Campaña Verano | MX"
+              required
             />
           </div>
           
+          {/* Campo: País (Dropdown) */}
           <div style={formGroupStyle}>
-            <label htmlFor="email_usuario" style={labelStyle}>Email:</label>
-            <input 
-              type="email" 
-              id="email_usuario" 
-              name="email" 
-              style={inputStyle} 
-              placeholder="tu@correo.com"
-            />
+            <label htmlFor="pais_proyecto" style={labelStyle}>País:</label>
+            <select 
+              id="pais_proyecto" 
+              name="País" // <-- CRÍTICO: Coincide con tu código n8n (con tilde)
+              style={inputStyle}
+              required
+              defaultValue="" // Para forzar al usuario a elegir una opción
+            >
+              <option value="" disabled>Selecciona un país</option>
+              <option value="AR">Argentina</option>
+              <option value="BR">Brasil</option>
+              <option value="CO">Colombia</option>
+              <option value="MX">México</option>
+            </select>
           </div>
 
           <button type="submit" style={buttonStyle}>
@@ -160,7 +171,7 @@ export default function Home({ user, role = "Viewer" }) {
           </button>
         </form>
       </section>
-      {/* --- FIN DEL FORMULARIO AÑADIDO --- */}
+      {/* --- FIN DEL FORMULARIO FUNCIONAL --- */}
 
     </div>
   );
