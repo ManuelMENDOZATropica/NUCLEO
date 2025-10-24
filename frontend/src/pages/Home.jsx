@@ -141,7 +141,7 @@ export default function Home({ user, role = "Viewer" }) {
             <input 
               type="text" 
               id="nombre_proyecto" 
-              name="Nombre del proyecto" // <-- CRÍTICO: Coincide con tu código n8n
+              name="name" // <-- CRÍTICO: Coincide con tu código n8n
               style={inputStyle} 
               placeholder="Ej: Campaña Verano | MX"
               required
