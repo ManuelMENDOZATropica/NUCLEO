@@ -5,6 +5,14 @@ import Licenses from "./pages/Licenses";
 import Admin from "./pages/Admin";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
+function buildApiUrl(path = "") {
+  if (!path.startsWith("/")) {
+    return `${API_BASE_URL}/${path}`;
+  }
+  return `${API_BASE_URL}${path}`;
+}
 const ALLOWED_DOMAIN = "tropica.me";
 const STORAGE_KEY = "tropica:user";
 const USERS_STORAGE_KEY = "tropica:users";
@@ -18,17 +26,35 @@ function normalizeEmail(email) {
 function ensureDefaultAdmin(list) {
   const normalizedDefault = normalizeEmail(DEFAULT_ADMIN_EMAIL);
   let hasAdmin = false;
+  const seen = new Set();
 
-  const updated = list.map(user => {
-    if (normalizeEmail(user.email) === normalizedDefault) {
-      hasAdmin = true;
-      return { ...user, role: "Admin" };
+  const sanitized = [];
+
+  list.forEach(user => {
+    const normalizedEmail = normalizeEmail(user?.email);
+
+    if (!normalizedEmail) {
+      sanitized.push(user);
+      return;
     }
-    return user;
+
+    if (normalizedEmail === normalizedDefault) {
+      if (!hasAdmin) {
+        sanitized.push({ ...user, role: "Admin" });
+        hasAdmin = true;
+      }
+      return;
+    }
+
+    if (!seen.has(normalizedEmail)) {
+      sanitized.push(user);
+      seen.add(normalizedEmail);
+    }
   });
 
   if (!hasAdmin) {
-    updated.push({
+    sanitized.push({
+      _id: "__default-admin__",
       email: DEFAULT_ADMIN_EMAIL,
       name: "Manuel",
       picture: "",
@@ -37,7 +63,7 @@ function ensureDefaultAdmin(list) {
     });
   }
 
-  return updated;
+  return sanitized;
 }
 
 function decodeJwtPayload(token) {
@@ -85,25 +111,27 @@ export default function App() {
       let data = [];
 
       try {
-        const stored = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY));
-        if (Array.isArray(stored)) {
-          data = stored;
-        }
-      } catch {
-        // ignore storage parsing errors
-      }
+        const response = await fetch(buildApiUrl("/api/users"), {
+          headers: { Accept: "application/json" },
+        });
 
-      if (!Array.isArray(data) || data.length === 0) {
+        if (!response.ok) {
+          throw new Error("No se pudieron obtener los usuarios");
+        }
+
+        const json = await response.json();
+        if (Array.isArray(json)) {
+          data = json;
+        }
+      } catch (err) {
+        console.error(err);
         try {
-          const response = await fetch("/json-db/users.json", { cache: "no-store" });
-          if (response.ok) {
-            const json = await response.json();
-            if (Array.isArray(json)) {
-              data = json;
-            }
+          const stored = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY));
+          if (Array.isArray(stored)) {
+            data = stored;
           }
         } catch {
-          // network errors are ignored; we fall back to defaults
+          // ignore storage errors
         }
       }
 
@@ -177,35 +205,35 @@ export default function App() {
   useEffect(() => {
     if (!isUsersReady || !user?.email) return;
 
-    setUsers(prev => {
-      const normalizedEmail = normalizeEmail(user.email);
-      let found = false;
+    const normalizedEmail = normalizeEmail(user.email);
+    const existing = users.find(item => normalizeEmail(item.email) === normalizedEmail);
 
-      const updated = prev.map(item => {
-        if (normalizeEmail(item.email) === normalizedEmail) {
-          found = true;
-          return {
-            ...item,
-            name: user.name || item.name || user.email,
-            picture: user.picture || item.picture || "",
-          };
-        }
-        return item;
-      });
+    if (!existing) {
+      const payload = {
+        email: user.email.trim(),
+        name: user.name || user.email,
+        picture: user.picture || "",
+        role: normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL) ? "Admin" : "Viewer",
+        createdAt: new Date().toISOString(),
+      };
 
-      if (!found) {
-        updated.push({
-          email: user.email.trim(),
-          name: user.name || user.email,
-          picture: user.picture || "",
-          role: normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL) ? "Admin" : "Viewer",
-          createdAt: new Date().toISOString(),
-        });
-      }
-
-      return ensureDefaultAdmin(updated);
-    });
-  }, [user, isUsersReady]);
+      handleCreateUser(payload);
+    } else {
+      setUsers(prev =>
+        ensureDefaultAdmin(
+          prev.map(item =>
+            normalizeEmail(item.email) === normalizedEmail
+              ? {
+                  ...item,
+                  name: user.name || item.name || user.email,
+                  picture: user.picture || item.picture || "",
+                }
+              : item
+          )
+        )
+      );
+    }
+  }, [user, isUsersReady, users, handleCreateUser]);
 
   const initializeGoogle = useCallback(() => {
     if (!isScriptLoaded || !window.google?.accounts?.id || !GOOGLE_CLIENT_ID) return;
@@ -232,63 +260,103 @@ export default function App() {
 
   useEffect(() => { initializeGoogle(); }, [initializeGoogle]);
 
-  const handleCreateUser = useCallback((newUser) => {
-    if (!newUser?.email) return;
-
-    const normalizedEmail = normalizeEmail(newUser.email);
-    const role = ROLES.includes(newUser.role) ? newUser.role : "Viewer";
-
-    setUsers(prev => {
-      if (prev.some(item => normalizeEmail(item.email) === normalizedEmail)) {
-        return prev;
-      }
-
-      const record = {
-        email: newUser.email.trim(),
-        name: newUser.name || newUser.email,
-        picture: newUser.picture || "",
-        role,
-        createdAt: newUser.createdAt || new Date().toISOString(),
-      };
-
-      return ensureDefaultAdmin([...prev, record]);
-    });
-  }, []);
-
-  const handleUpdateUserRole = useCallback((email, role) => {
-    if (!email || !ROLES.includes(role)) return;
-
-    const normalizedEmail = normalizeEmail(email);
-
-    if (normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL)) {
-      return;
+  const handleCreateUser = useCallback(async (newUser) => {
+    if (!newUser?.email) {
+      return { ok: false, error: "El correo es obligatorio" };
     }
 
-    setUsers(prev => {
-      const updated = prev.map(userRecord => {
-        if (normalizeEmail(userRecord.email) === normalizedEmail) {
-          return { ...userRecord, role };
-        }
-        return userRecord;
+    const payload = {
+      email: newUser.email.trim(),
+      name: newUser.name || newUser.email,
+      picture: newUser.picture || "",
+      role: ROLES.includes(newUser.role) ? newUser.role : "Viewer",
+      createdAt: newUser.createdAt,
+    };
+
+    try {
+      const response = await fetch(buildApiUrl("/api/users"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      return ensureDefaultAdmin(updated);
-    });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { ok: false, error: error?.message || "No se pudo crear el usuario" };
+      }
+
+      const created = await response.json();
+      setUsers(prev => ensureDefaultAdmin([...prev, created]));
+      return { ok: true, data: created };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, error: "No se pudo conectar con el servidor" };
+    }
   }, []);
 
-  const handleDeleteUser = useCallback((email) => {
-    if (!email) return;
-
-    const normalizedEmail = normalizeEmail(email);
-
-    if (normalizedEmail === normalizeEmail(DEFAULT_ADMIN_EMAIL)) {
-      return;
+  const handleUpdateUserRole = useCallback(async (id, email, role) => {
+    if (!id || !role || !ROLES.includes(role)) {
+      return { ok: false, error: "Datos inválidos" };
     }
 
-    setUsers(prev => {
-      const filtered = prev.filter(userRecord => normalizeEmail(userRecord.email) !== normalizedEmail);
-      return ensureDefaultAdmin(filtered);
-    });
+    if (normalizeEmail(email) === normalizeEmail(DEFAULT_ADMIN_EMAIL)) {
+      return { ok: false, error: "No puedes modificar al administrador predeterminado" };
+    }
+
+    try {
+      const response = await fetch(buildApiUrl(`/api/users/${id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { ok: false, error: error?.message || "No se pudo actualizar el usuario" };
+      }
+
+      const updated = await response.json();
+      setUsers(prev =>
+        ensureDefaultAdmin(
+          prev.map(userRecord =>
+            userRecord._id === updated._id ? { ...userRecord, ...updated } : userRecord
+          )
+        )
+      );
+      return { ok: true, data: updated };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, error: "No se pudo conectar con el servidor" };
+    }
+  }, []);
+
+  const handleDeleteUser = useCallback(async (id, email) => {
+    if (!id) {
+      return { ok: false, error: "Usuario inválido" };
+    }
+
+    if (normalizeEmail(email) === normalizeEmail(DEFAULT_ADMIN_EMAIL)) {
+      return { ok: false, error: "No puedes eliminar al administrador predeterminado" };
+    }
+
+    try {
+      const response = await fetch(buildApiUrl(`/api/users/${id}`), {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { ok: false, error: error?.message || "No se pudo eliminar el usuario" };
+      }
+
+      setUsers(prev =>
+        ensureDefaultAdmin(prev.filter(userRecord => userRecord._id !== id))
+      );
+      return { ok: true };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, error: "No se pudo conectar con el servidor" };
+    }
   }, []);
 
   const signOut = () => {

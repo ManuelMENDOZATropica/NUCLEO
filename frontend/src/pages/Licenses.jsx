@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
+function buildApiUrl(path = "") {
+  if (!path.startsWith("/")) {
+    return `${API_BASE_URL}/${path}`;
+  }
+  return `${API_BASE_URL}${path}`;
+}
+
 const layoutStyle = {
   maxWidth: 1120,
   margin: "0 auto",
@@ -91,7 +100,9 @@ function LicenseDetail({ license }) {
             )}
           </div>
           <div style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>{license.category}</span>
+            <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>
+              {license.categoria || "Licencia"}
+            </span>
             <h3 style={{ margin: 0, fontSize: 24, color: "#0f172a" }}>{license.nombre}</h3>
             <span style={{ fontSize: 14, color: "#475569" }}>{license.licencia}</span>
           </div>
@@ -140,7 +151,7 @@ function LicenseDetail({ license }) {
 }
 
 export default function Licenses() {
-  const [catalog, setCatalog] = useState({});
+  const [licenses, setLicenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
@@ -150,19 +161,24 @@ export default function Licenses() {
     async function load() {
       try {
         setLoading(true);
-        const response = await fetch("/json-db/licenses.json", { cache: "no-store" });
+        const response = await fetch(buildApiUrl("/api/licenses"), {
+          headers: { Accept: "application/json" },
+        });
         if (!response.ok) {
           throw new Error("No se pudo cargar el catálogo de licencias");
         }
         const json = await response.json();
         if (!cancelled) {
-          setCatalog(json || {});
+          if (!Array.isArray(json)) {
+            throw new Error("Formato de licencias inválido");
+          }
+          setLicenses(json);
           setError("");
         }
       } catch (err) {
         if (!cancelled) {
           setError(err.message || "Error desconocido");
-          setCatalog({});
+          setLicenses([]);
         }
       } finally {
         if (!cancelled) {
@@ -176,12 +192,18 @@ export default function Licenses() {
     };
   }, []);
 
-  const flattenedLicenses = useMemo(() => {
-    const entries = Object.entries(catalog || {});
-    return entries.flatMap(([category, items]) =>
-      (Array.isArray(items) ? items : []).map(item => ({ ...item, category }))
-    );
-  }, [catalog]);
+  const catalog = useMemo(() => {
+    return (licenses || []).reduce((acc, item) => {
+      const category = item.categoria || "Sin categoría";
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(item);
+      return acc;
+    }, {});
+  }, [licenses]);
+
+  const flattenedLicenses = useMemo(() => licenses, [licenses]);
 
   useEffect(() => {
     if (flattenedLicenses.length === 0) {
@@ -192,10 +214,7 @@ export default function Licenses() {
     }
 
     const hasSelected =
-      !!selected &&
-      flattenedLicenses.some(
-        item => item.nombre === selected.nombre && item.category === selected.category
-      );
+      !!selected && flattenedLicenses.some(item => item._id === selected._id);
 
     if (!hasSelected) {
       setSelected(flattenedLicenses[0]);
@@ -220,23 +239,23 @@ export default function Licenses() {
 
   return (
     <div style={layoutStyle}>
-      {Object.entries(catalog).map(([category, licenses]) => {
-        const isSelectedCategory = selected?.category === category;
+      {Object.entries(catalog).map(([category, items]) => {
+        const isSelectedCategory = selected?.categoria === category;
 
         return (
           <section key={category} style={gridStyle}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <h2 style={categoryHeaderStyle}>{category}</h2>
-              <span style={badgeStyle}>{licenses?.length || 0} licencias</span>
+              <span style={badgeStyle}>{items?.length || 0} licencias</span>
             </div>
             <div style={cardListStyle}>
-              {(licenses || []).map(license => {
-                const isSelected = selected?.nombre === license.nombre && isSelectedCategory;
+              {(items || []).map(license => {
+                const isSelected = selected?._id === license._id && isSelectedCategory;
                 return (
                   <article
-                    key={license.nombre}
+                    key={license._id || license.nombre}
                     style={cardStyle(isSelected)}
-                    onClick={() => setSelected({ ...license, category })}
+                    onClick={() => setSelected(license)}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div
