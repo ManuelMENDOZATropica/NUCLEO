@@ -137,6 +137,9 @@ export default function Admin({
   const [form, setForm] = useState(DEFAULT_FORM);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tableFeedback, setTableFeedback] = useState("");
+  const [tableError, setTableError] = useState("");
 
   const orderedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -157,10 +160,12 @@ export default function Admin({
     setForm(DEFAULT_FORM);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
     setFeedback("");
+    setTableFeedback("");
+    setTableError("");
 
     const email = form.email.trim().toLowerCase();
     const name = form.name.trim();
@@ -189,13 +194,55 @@ export default function Admin({
       createdAt: new Date().toISOString(),
     };
 
-    onCreateUser?.(payload);
-    setFeedback("Usuario agregado correctamente.");
-    resetForm();
+    if (!onCreateUser) {
+      setFeedback("Usuario agregado correctamente.");
+      resetForm();
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await onCreateUser(payload);
+      if (!result?.ok) {
+        setError(result?.error || "No se pudo agregar el usuario.");
+        return;
+      }
+
+      setFeedback("Usuario agregado correctamente.");
+      resetForm();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isDefaultAdmin = (email) =>
     email && defaultAdminEmail && email.toLowerCase() === defaultAdminEmail.toLowerCase();
+
+  const handleRoleChange = async (user, role) => {
+    if (!onUpdateUserRole || !user?._id) return;
+    setTableFeedback("");
+    setTableError("");
+
+    const result = await onUpdateUserRole(user._id, user.email, role);
+    if (!result?.ok) {
+      setTableError(result?.error || "No se pudo actualizar el privilegio.");
+    } else {
+      setTableFeedback("Privilegio actualizado correctamente.");
+    }
+  };
+
+  const handleDelete = async (user) => {
+    if (!onDeleteUser || !user?._id) return;
+    setTableFeedback("");
+    setTableError("");
+
+    const result = await onDeleteUser(user._id, user.email);
+    if (!result?.ok) {
+      setTableError(result?.error || "No se pudo eliminar el usuario.");
+    } else {
+      setTableFeedback("Usuario eliminado correctamente.");
+    }
+  };
 
   return (
     <div style={containerStyle}>
@@ -268,8 +315,12 @@ export default function Admin({
             </label>
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <button type="submit" style={{ ...actionButtonStyle, background: "#1d4ed8", color: "#f8fafc" }}>
-              Guardar usuario
+            <button
+              type="submit"
+              style={{ ...actionButtonStyle, background: "#1d4ed8", color: "#f8fafc", opacity: isSubmitting ? 0.7 : 1 }}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Guardando…" : "Guardar usuario"}
             </button>
             <button type="button" onClick={resetForm} style={actionButtonStyle}>
               Limpiar
@@ -285,6 +336,11 @@ export default function Admin({
           <h2 style={{ margin: 0, fontSize: 18, color: "#0f172a" }}>Usuarios registrados</h2>
           <span style={{ fontSize: 13, color: "#475569" }}>{users.length} usuarios</span>
         </div>
+        {(tableFeedback || tableError) && (
+          <div style={{ fontSize: 13, color: tableError ? "#b91c1c" : "#15803d" }}>
+            {tableError || tableFeedback}
+          </div>
+        )}
 
         <div style={{ overflowX: "auto" }}>
           <table style={tableStyle}>
@@ -319,9 +375,9 @@ export default function Admin({
                         <RoleBadge role={user.role} />
                         <select
                           value={user.role}
-                          onChange={event => onUpdateUserRole?.(email, event.target.value)}
+                          onChange={event => handleRoleChange(user, event.target.value)}
                           style={roleSelectStyle}
-                          disabled={locked}
+                          disabled={locked || !user._id}
                         >
                           {roles.map(role => (
                             <option key={role} value={role}>
@@ -335,14 +391,15 @@ export default function Admin({
                     <td style={{ ...cellStyle, textAlign: "right" }}>
                       <button
                         type="button"
-                        onClick={() => onDeleteUser?.(email)}
+                        onClick={() => handleDelete(user)}
                         style={{
                           ...actionButtonStyle,
                           background: "rgba(248, 113, 113, 0.15)",
                           color: "#b91c1c",
-                          cursor: locked || isCurrentUser ? "not-allowed" : "pointer",
+                          cursor:
+                            locked || isCurrentUser || !user._id ? "not-allowed" : "pointer",
                         }}
-                        disabled={locked || isCurrentUser}
+                        disabled={locked || isCurrentUser || !user._id}
                       >
                         Eliminar
                       </button>
