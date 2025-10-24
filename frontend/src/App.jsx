@@ -87,6 +87,7 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; } catch { return null; }
   });
   const [users, setUsers] = useState([]);
+  const [licenses, setLicenses] = useState([]);
   const [isUsersReady, setIsUsersReady] = useState(false);
   const [error, setError] = useState("");
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
@@ -109,6 +110,7 @@ export default function App() {
 
     async function loadUsers() {
       let data = [];
+      let licenseData = [];
 
       try {
         const response = await fetch(buildApiUrl("/api/users"), {
@@ -139,10 +141,33 @@ export default function App() {
         data = [];
       }
 
+      try {
+        const response = await fetch(buildApiUrl("/api/licenses"), {
+          headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          throw new Error("No se pudieron obtener las licencias");
+        }
+
+        const json = await response.json();
+        if (Array.isArray(json)) {
+          licenseData = json;
+        }
+      } catch (err) {
+        console.error(err);
+        licenseData = [];
+      }
+
       const prepared = ensureDefaultAdmin(data);
+
+      if (!Array.isArray(licenseData)) {
+        licenseData = [];
+      }
 
       if (!cancelled) {
         setUsers(prepared);
+        setLicenses(licenseData);
         setIsUsersReady(true);
       }
     }
@@ -304,6 +329,81 @@ export default function App() {
     }
   }, []);
 
+  const handleCreateLicense = useCallback(async (newLicense) => {
+    if (!newLicense) {
+      return { ok: false, error: "Datos inválidos" };
+    }
+
+    try {
+      const response = await fetch(buildApiUrl("/api/licenses"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newLicense),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { ok: false, error: error?.message || "No se pudo crear la licencia" };
+      }
+
+      const created = await response.json();
+      setLicenses(prev => [...prev, created]);
+      return { ok: true, data: created };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, error: "No se pudo conectar con el servidor" };
+    }
+  }, []);
+
+  const handleUpdateLicense = useCallback(async (id, data) => {
+    if (!id || !data) {
+      return { ok: false, error: "Datos inválidos" };
+    }
+
+    try {
+      const response = await fetch(buildApiUrl(`/api/licenses/${id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { ok: false, error: error?.message || "No se pudo actualizar la licencia" };
+      }
+
+      const updated = await response.json();
+      setLicenses(prev => prev.map(item => (item._id === id ? { ...item, ...updated } : item)));
+      return { ok: true, data: updated };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, error: "No se pudo conectar con el servidor" };
+    }
+  }, []);
+
+  const handleDeleteLicense = useCallback(async (id) => {
+    if (!id) {
+      return { ok: false, error: "Licencia inválida" };
+    }
+
+    try {
+      const response = await fetch(buildApiUrl(`/api/licenses/${id}`), {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { ok: false, error: error?.message || "No se pudo eliminar la licencia" };
+      }
+
+      setLicenses(prev => prev.filter(item => item._id !== id));
+      return { ok: true };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, error: "No se pudo conectar con el servidor" };
+    }
+  }, []);
+
   // --- FIN DEL BLOQUE MOVIDO ---
 
 
@@ -385,13 +485,13 @@ export default function App() {
   );
 
   const currentRole = currentUserRecord?.role || "Viewer";
-  const isAdmin = currentRole === "Admin";
+  const canAccessAdmin = currentRole === "Admin" || currentRole === "Editor";
 
   useEffect(() => {
-    if (activeView === "admin" && !isAdmin) {
+    if (activeView === "admin" && !canAccessAdmin) {
       setActiveView("home");
     }
-  }, [activeView, isAdmin]);
+  }, [activeView, canAccessAdmin]);
 
   if (!user) {
     return (
@@ -427,12 +527,12 @@ export default function App() {
         onNavigate={setActiveView}
         user={user}
         onSignOut={signOut}
-        showAdmin={isAdmin}
+        showAdmin={canAccessAdmin}
       />
       <main style={{ minHeight: "calc(100vh - 72px)" }}>
         {activeView === "home" && <Home user={user} role={currentRole} />}
         {activeView === "licenses" && <Licenses />}
-        {activeView === "admin" && isAdmin && (
+        {activeView === "admin" && canAccessAdmin && (
           <Admin
             users={users}
             roles={ROLES}
@@ -442,6 +542,11 @@ export default function App() {
             currentUserEmail={user.email}
             defaultAdminEmail={DEFAULT_ADMIN_EMAIL}
             allowedDomain={ALLOWED_DOMAIN}
+            currentRole={currentRole}
+            licenses={licenses}
+            onCreateLicense={handleCreateLicense}
+            onUpdateLicense={handleUpdateLicense}
+            onDeleteLicense={handleDeleteLicense}
           />
         )}
       </main>
