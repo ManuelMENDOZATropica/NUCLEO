@@ -31,6 +31,42 @@ const bodyStyle = {
   lineHeight: 1.6,
 };
 
+// --- Nuevos estilos para el formulario ---
+const formGroupStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  marginBottom: 16,
+};
+
+const labelStyle = {
+  fontWeight: 600,
+  fontSize: 14,
+  color: "#334155",
+};
+
+const inputStyle = {
+  padding: "10px 14px",
+  borderRadius: 8,
+  border: "1px solid #cbd5e1",
+  fontSize: 15,
+  width: "100%", // Hace que ocupe el ancho del formulario
+  boxSizing: "border-box", // Importante para que el padding no afecte el ancho
+};
+
+const buttonStyle = {
+  background: "#1d4ed8",
+  color: "white",
+  padding: "12px 20px",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontWeight: 600,
+  fontSize: 15,
+  width: "auto", // O '100%' si quieres que ocupe todo el ancho
+};
+// --- Fin de nuevos estilos ---
+
 export default function Home({ user, role = "Viewer" }) {
   return (
     <div style={containerStyle}>
@@ -89,6 +125,43 @@ export default function Home({ user, role = "Viewer" }) {
           ))}
         </div>
       </section>
+
+      {/* --- INICIO DEL FORMULARIO AÑADIDO --- */}
+      <section style={cardStyle}>
+        <h2 style={{ ...titleStyle, fontSize: 20, marginBottom: 20 }}>Formulario de Prueba n8n</h2>
+        <form 
+          action="https://tropica.app.n8n.cloud/webhook-test/31d2811f-a9ed-4220-8157-ed1a95b3d64b" 
+          method="POST"
+        >
+          <div style={formGroupStyle}>
+            <label htmlFor="nombre_usuario" style={labelStyle}>Nombre:</label>
+            <input 
+              type="text" 
+              id="nombre_usuario" 
+              name="nombre" 
+              style={inputStyle} 
+              placeholder="Escribe tu nombre"
+            />
+          </div>
+          
+          <div style={formGroupStyle}>
+            <label htmlFor="email_usuario" style={labelStyle}>Email:</label>
+            <input 
+              type="email" 
+              id="email_usuario" 
+              name="email" 
+              style={inputStyle} 
+              placeholder="tu@correo.com"
+            />
+          </div>
+
+          <button type="submit" style={buttonStyle}>
+            Enviar a n8n
+          </button>
+        </form>
+      </section>
+      {/* --- FIN DEL FORMULARIO AÑADIDO --- */}
+
     </div>
   );
 }
