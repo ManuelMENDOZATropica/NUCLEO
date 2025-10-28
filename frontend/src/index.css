@@ -17,3 +17,234 @@ body {
 a {
   color: inherit;
 }
+
+.ia-eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.ia-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .ia-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .ia-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ia-card {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  perspective: 1500px;
+  height: 100%;
+}
+
+.ia-card:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 6px;
+}
+
+.ia-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+}
+
+.ia-card.is-flipped .ia-card-inner {
+  transform: rotateY(180deg);
+}
+
+.ia-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 24px;
+  border: 1px solid #cbd5f5;
+  background: linear-gradient(160deg, #f8fafc 0%, #eef2ff 100%);
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+  display: flex;
+  align-items: stretch;
+}
+
+.ia-card-front {
+  justify-content: center;
+}
+
+.ia-card-back {
+  transform: rotateY(180deg);
+}
+
+.ia-card-front-content,
+.ia-card-back-content {
+  padding: 28px;
+  display: grid;
+  gap: 16px;
+  text-align: left;
+  align-content: flex-start;
+}
+
+.ia-card-title {
+  margin: 0;
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.ia-card-tag {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #2563eb;
+}
+
+.ia-card-summary {
+  margin: 0;
+  font-size: 16px;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.ia-card-body {
+  display: grid;
+  gap: 10px;
+}
+
+.ia-card-text {
+  margin: 0;
+  font-size: 14px;
+  color: #1e293b;
+  line-height: 1.6;
+}
+
+.ia-card-heading {
+  font-weight: 700;
+}
+
+.ia-card-hint {
+  font-size: 12px;
+  color: #475569;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ia-card-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.ia-card-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ia-card-overlay-content {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 32px;
+  display: grid;
+  gap: 24px;
+  box-shadow: 0 42px 80px rgba(15, 23, 42, 0.24);
+}
+
+.ia-card-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.ia-card-overlay-titles {
+  display: grid;
+  gap: 8px;
+}
+
+.ia-card-overlay-body {
+  display: grid;
+  gap: 12px;
+}
+
+.ia-card-close {
+  background: #0f172a;
+  color: #f8fafc;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ia-card-text-overlay {
+  font-size: 16px;
+}
+
+.ia-card-heading-overlay {
+  font-size: 16px;
+}
+
+.ia-card-text-back {
+  font-size: 14px;
+}
+
+.ia-card-heading-back {
+  font-size: 14px;
+}
+
+.ia-section-header {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.ia-section-header h2 {
+  margin: 0;
+  font-size: 26px;
+  color: #0f172a;
+}
+
+.ia-section-header p {
+  margin: 0;
+  font-size: 16px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .ia-card-overlay {
+    padding: 16px;
+  }
+
+  .ia-card-overlay-content {
+    padding: 24px;
+  }
+}
