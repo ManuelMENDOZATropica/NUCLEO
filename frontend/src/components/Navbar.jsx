@@ -81,8 +81,7 @@ const navStyles = {
 export default function Navbar({ active = "home", onNavigate, user, onSignOut, showAdmin = false }) {
   const menuItems = [
     { id: "home", label: "Inicio" },
-    { id: "licenses", label: "Licencias" },
-    { id: "automations", label: "Automatizaciones" },
+    { id: "ia", label: "IA" },
   ];
 
   if (showAdmin) {

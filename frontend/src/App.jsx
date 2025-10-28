@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import Licenses from "./pages/Licenses";
-import Automations from "./pages/Automations";
+import IA from "./pages/IA";
 import Admin from "./pages/Admin";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -532,8 +531,7 @@ export default function App() {
       />
       <main style={{ minHeight: "calc(100vh - 72px)" }}>
         {activeView === "home" && <Home user={user} role={currentRole} />}
-        {activeView === "licenses" && <Licenses />}
-        {activeView === "automations" && <Automations />}
+        {activeView === "ia" && <IA />}
         {activeView === "admin" && canAccessAdmin && (
           <Admin
             users={users}
