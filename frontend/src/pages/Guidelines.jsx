@@ -1,4 +1,10 @@
 import React, { useMemo, useState } from "react";
+// ASUMIENDO QUE IMPORTAS './index.css' AQUÍ, O ESTÁ EN TU ÁMBITO GLOBAL.
+
+/* * NOTA: Los estilos de las secciones de riesgo/movimiento se han integrado 
+ * como objetos de estilo en el componente principal para mantener la estructura original,
+ * pero se recomienda moverlos a index.css para un código más limpio.
+*/
 
 const pageStyle = {
   maxWidth: 1200,
@@ -31,6 +37,7 @@ const subtitleStyle = {
   lineHeight: 1.6,
 };
 
+// Estilos de Riesgo/Movimiento trasladados a objetos por claridad
 const riskBlockStyle = {
   background: "#0f172a",
   color: "#e2e8f0",
@@ -66,6 +73,7 @@ const motionBlockStyle = {
 };
 
 function buildGuidelines() {
+  // ... (Tu función original buildGuidelines, sin cambios)
   return [
     {
       id: "human-centered-partnership",
@@ -174,6 +182,7 @@ function renderBody(body, variant) {
   return body.map((item, index) => {
     const key = `${item.text}-${index}`;
     if (item.type === "heading") {
+      // Usa las clases CSS de tu index.css
       return (
         <p key={key} className={`ia-card-text ia-card-heading ia-card-heading-${variant}`}>
           {item.text}
@@ -181,6 +190,7 @@ function renderBody(body, variant) {
       );
     }
     return (
+      // Usa las clases CSS de tu index.css
       <p key={key} className={`ia-card-text ia-card-text-${variant}`}>
         {item.text}
       </p>
@@ -195,6 +205,9 @@ function GuidelineCard({ guideline, state, onCardClick, onCloseExpanded }) {
 
   return (
     <>
+      {/* El estado 'is-flipped' aplica el giro gracias al CSS que proporcionaste 
+        (ej: .ia-card.is-flipped .ia-card-inner { transform: rotateY(180deg); })
+      */}
       <button
         type="button"
         className={`ia-card ${isFlipped ? "is-flipped" : ""}`}
@@ -219,6 +232,9 @@ function GuidelineCard({ guideline, state, onCardClick, onCloseExpanded }) {
         </div>
       </button>
 
+      {/* El overlay se activa con el estado 'expanded' y su estilo lo maneja el CSS 
+        (ej: .ia-card-overlay { position: fixed; inset: 0; z-index: 40; ... })
+      */}
       {isExpanded ? (
         <div className="ia-card-overlay" role="dialog" aria-modal="true">
           <div className="ia-card-overlay-content">
@@ -260,9 +276,11 @@ export default function Guidelines() {
     setCardStates(prev => {
       return guidelines.map((item, index) => {
         if (item.id !== id) {
+          // Si el usuario hace clic en una tarjeta, cualquier otra tarjeta expandida o girada vuelve al frente.
           return prev[index] === "expanded" ? "front" : prev[index] === "back" ? "front" : prev[index];
         }
         const currentState = prev[index];
+        // Lógica de transición de estados: front -> back -> expanded -> front
         if (currentState === "front") return "back";
         if (currentState === "back") return "expanded";
         return "front";
@@ -273,10 +291,27 @@ export default function Guidelines() {
   const handleCloseExpanded = id => {
     setCardStates(prev =>
       guidelines.map((item, index) => {
-        if (item.id === id) return "front";
-        return prev[index] === "expanded" ? "front" : prev[index];
+        if (item.id === id) return "front"; // Al cerrar el overlay, vuelve al estado frontal
+        return prev[index] === "expanded" ? "front" : prev[index]; // Cierra cualquier otro overlay por si acaso
       })
     );
+  };
+
+  // Estilos de riesgo individuales (colores)
+  const greenItemStyle = { 
+    ...riskItemStyle, 
+    borderColor: "rgba(74, 222, 128, 0.6)", 
+    background: "rgba(22, 163, 74, 0.2)" 
+  };
+  const yellowItemStyle = { 
+    ...riskItemStyle, 
+    borderColor: "rgba(250, 204, 21, 0.6)", 
+    background: "rgba(202, 138, 4, 0.25)" 
+  };
+  const redItemStyle = { 
+    ...riskItemStyle, 
+    borderColor: "rgba(248, 113, 113, 0.6)", 
+    background: "rgba(220, 38, 38, 0.25)" 
   };
 
   return (
@@ -303,27 +338,27 @@ export default function Guidelines() {
       </section>
 
       <section style={riskBlockStyle}>
-        <div>
-          <h2 style={{ margin: "0 0 12px", fontSize: 26 }}>Sistema de Evaluación de Riesgos</h2>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>
+        <div className="ia-section-header">
+          <h2 style={{ margin: "0 0 12px", fontSize: 26, color: 'inherit' }}>Sistema de Evaluación de Riesgos</h2>
+          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: 'inherit' }}>
             Usa esta escala para clasificar cada iniciativa con IA y asegurar los niveles adecuados de revisión y
             aprobación.
           </p>
         </div>
         <div style={riskGridStyle}>
-          <div style={{ ...riskItemStyle, borderColor: "rgba(74, 222, 128, 0.6)", background: "rgba(22, 163, 74, 0.2)" }}>
+          <div style={greenItemStyle}>
             <h3 style={{ margin: 0, fontSize: 18 }}>VERDE</h3>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
               Aprobación de Líder de Equipo — borradores internos, brainstorming.
             </p>
           </div>
-          <div style={{ ...riskItemStyle, borderColor: "rgba(250, 204, 21, 0.6)", background: "rgba(202, 138, 4, 0.25)" }}>
+          <div style={yellowItemStyle}>
             <h3 style={{ margin: 0, fontSize: 18 }}>AMARILLO</h3>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
               Director Creativo + Compliance — presentaciones para clientes.
             </p>
           </div>
-          <div style={{ ...riskItemStyle, borderColor: "rgba(248, 113, 113, 0.6)", background: "rgba(220, 38, 38, 0.25)" }}>
+          <div style={redItemStyle}>
             <h3 style={{ margin: 0, fontSize: 18 }}>ROJO</h3>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
               Legal + Dirección Ejecutiva — campañas públicas, datos de cliente.
