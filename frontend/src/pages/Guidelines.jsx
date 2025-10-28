@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from "react";
-// ASUMIENDO QUE IMPORTAS './index.css' AQUÍ, O ESTÁ EN TU ÁMBITO GLOBAL.
+// Asegúrate de que tu 'index.css' sigue siendo importado o accesible globalmente.
 
-/* * NOTA: Los estilos de las secciones de riesgo/movimiento se han integrado 
- * como objetos de estilo en el componente principal para mantener la estructura original,
- * pero se recomienda moverlos a index.css para un código más limpio.
-*/
+// *** NOTA: Los estilos inline aquí son para la demostración. 
+// *** Se recomienda moverlos a 'index.css' para una mejor práctica.
 
 const pageStyle = {
-  maxWidth: 1200,
+  maxWidth: 1000, // Reducido para un layout más compacto
   margin: "0 auto",
   padding: "36px 24px 100px",
   display: "grid",
@@ -19,67 +17,168 @@ const headerStyle = {
   flexDirection: "column",
   gap: 12,
   alignItems: "flex-start",
+  textAlign: "left", // Aseguramos alineación izquierda
 };
 
 const titleStyle = {
   margin: 0,
-  fontSize: 32,
+  fontSize: 36, // Un poco más grande
   color: "#0f172a",
   lineHeight: 1.2,
-  fontWeight: 700,
+  fontWeight: 800, // Más negrita
 };
 
 const subtitleStyle = {
   margin: 0,
-  fontSize: 16,
+  fontSize: 18, // Un poco más grande
   color: "#475569",
-  maxWidth: 680,
+  maxWidth: 720, // Ajustado
   lineHeight: 1.6,
 };
 
-// Estilos de Riesgo/Movimiento trasladados a objetos por claridad
-const riskBlockStyle = {
-  background: "#0f172a",
-  color: "#e2e8f0",
-  borderRadius: 24,
-  padding: "36px",
-  boxShadow: "0 32px 60px rgba(15, 23, 42, 0.35)",
+// Estilos para el acordeón (nuevos)
+const accordionSectionStyle = {
   display: "grid",
-  gap: 28,
+  gap: 16,
+};
+
+const accordionItemStyle = {
+  background: "#ffffff",
+  border: "1px solid #e2e8f0",
+  borderRadius: 16,
+  overflow: "hidden", // Para animar la altura
+  boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
+};
+
+const accordionHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "20px 24px",
+  cursor: "pointer",
+  background: "#f8fafc",
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const accordionTitleStyle = {
+  margin: 0,
+  fontSize: 20,
+  color: "#0f172a",
+  fontWeight: 700,
+};
+
+const accordionSubtitleStyle = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: "#3b82f6",
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const accordionContentStyle = {
+  padding: "0 24px", // Padding horizontal
+  maxHeight: 0,
+  overflow: "hidden",
+  transition: "max-height 0.4s ease-out, padding 0.4s ease-out", // Animación de altura y padding
+};
+
+const accordionContentExpandedStyle = {
+  maxHeight: "500px", // Un valor suficientemente grande para el contenido
+  padding: "20px 24px", // Padding cuando está abierto
+};
+
+const accordionTextContentStyle = {
+  fontSize: 16,
+  color: "#334155",
+  lineHeight: 1.6,
+  margin: "0 0 10px 0",
+};
+
+const accordionHeadingContentStyle = {
+  fontSize: 16,
+  fontWeight: 700,
+  color: "#1e293b",
+  margin: "15px 0 5px 0",
+};
+
+
+// Estilos para la sección de riesgo (ajustados para simplicidad visual)
+const riskBlockStyle = {
+  background: "#111827", // Fondo más oscuro para contraste
+  color: "#f9fafb", // Texto claro
+  borderRadius: 16,
+  padding: "32px",
+  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
+  display: "grid",
+  gap: 24,
 };
 
 const riskGridStyle = {
   display: "grid",
-  gap: 20,
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 16,
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
 };
 
 const riskItemStyle = {
-  background: "rgba(15, 23, 42, 0.55)",
-  border: "1px solid rgba(148, 163, 184, 0.35)",
-  borderRadius: 18,
-  padding: 20,
+  borderRadius: 12,
+  padding: 16,
   display: "grid",
-  gap: 8,
+  gap: 6,
+  border: "1px solid rgba(255,255,255,0.2)",
+};
+
+const riskTitleStyle = {
+  margin: 0,
+  fontSize: 18,
+  fontWeight: 700,
+};
+
+const riskDescriptionStyle = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.5,
+  color: "#e2e8f0",
 };
 
 const motionBlockStyle = {
-  background: "rgba(148, 163, 184, 0.2)",
-  border: "1px solid rgba(148, 163, 184, 0.5)",
-  borderRadius: 18,
-  padding: 20,
+  background: "rgba(255, 255, 255, 0.1)", // Fondo translúcido dentro del bloque oscuro
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  borderRadius: 12,
+  padding: 18,
   display: "grid",
-  gap: 12,
+  gap: 10,
 };
 
+const motionTitleStyle = {
+  margin: 0,
+  fontSize: 16,
+  fontWeight: 700,
+  color: "#f9fafb",
+};
+
+const motionFormatStyle = {
+  margin: "0 0 8px 0",
+  fontSize: 14,
+  lineHeight: 1.5,
+  color: "#e2e8f0",
+};
+
+const motionExampleStyle = {
+  display: "grid",
+  gap: 5,
+  fontSize: 14,
+  lineHeight: 1.5,
+  color: "#f0f4f8",
+};
+
+// Data original de las guías
 function buildGuidelines() {
-  // ... (Tu función original buildGuidelines, sin cambios)
   return [
     {
       id: "human-centered-partnership",
       title: "Human-Centered Partnership",
       subtitle: "Colaboración centrada en el ser humano",
-      summary: "La IA mejora, los humanos lideran.",
+      summary: "La IA mejora, los humanos lideran.", // No usado en este diseño, pero se mantiene
       body: [
         { type: "text", text: "La IA mejora, los humanos lideran." },
         { type: "text", text: "El criterio humano guía la estrategia." },
@@ -178,141 +277,72 @@ function buildGuidelines() {
   ];
 }
 
-function renderBody(body, variant) {
+
+// Componente de renderizado de contenido
+function renderBody(body) {
   return body.map((item, index) => {
     const key = `${item.text}-${index}`;
     if (item.type === "heading") {
-      // Usa las clases CSS de tu index.css
       return (
-        <p key={key} className={`ia-card-text ia-card-heading ia-card-heading-${variant}`}>
+        <p key={key} style={accordionHeadingContentStyle}>
           {item.text}
         </p>
       );
     }
     return (
-      // Usa las clases CSS de tu index.css
-      <p key={key} className={`ia-card-text ia-card-text-${variant}`}>
+      <p key={key} style={accordionTextContentStyle}>
         {item.text}
       </p>
     );
   });
 }
 
-function GuidelineCard({ guideline, state, onCardClick, onCloseExpanded }) {
-  const { title, subtitle, summary, body, id } = guideline;
-  const isFlipped = state === "back" || state === "expanded";
-  const isExpanded = state === "expanded";
+// Nuevo componente para una tarjeta de directriz sencilla (acordeón)
+function GuidelineAccordionItem({ guideline, isOpen, onToggle }) {
+  const { title, subtitle, body } = guideline;
 
   return (
-    <>
-      {/* El estado 'is-flipped' aplica el giro gracias al CSS que proporcionaste 
-        (ej: .ia-card.is-flipped .ia-card-inner { transform: rotateY(180deg); })
-      */}
-      <button
-        type="button"
-        className={`ia-card ${isFlipped ? "is-flipped" : ""}`}
-        onClick={() => onCardClick(id)}
-      >
-        <div className="ia-card-inner">
-          <div className="ia-card-face ia-card-front">
-            <div className="ia-card-front-content">
-              <span className="ia-card-tag">{subtitle}</span>
-              <h3 className="ia-card-title">{title}</h3>
-              <p className="ia-card-summary">{summary}</p>
-            </div>
-          </div>
-          <div className="ia-card-face ia-card-back">
-            <div className="ia-card-back-content">
-              <span className="ia-card-tag">{subtitle}</span>
-              <h3 className="ia-card-title">{title}</h3>
-              <div className="ia-card-body">{renderBody(body, "back")}</div>
-              <span className="ia-card-hint">Haz clic de nuevo para ampliar</span>
-            </div>
-          </div>
+    <div style={accordionItemStyle}>
+      <button style={accordionHeaderStyle} onClick={onToggle} aria-expanded={isOpen}>
+        <div>
+          <span style={accordionSubtitleStyle}>{subtitle}</span>
+          <h3 style={accordionTitleStyle}>{title}</h3>
         </div>
+        <span>{isOpen ? "▲" : "▼"}</span> {/* Icono para indicar estado */}
       </button>
-
-      {/* El overlay se activa con el estado 'expanded' y su estilo lo maneja el CSS 
-        (ej: .ia-card-overlay { position: fixed; inset: 0; z-index: 40; ... })
-      */}
-      {isExpanded ? (
-        <div className="ia-card-overlay" role="dialog" aria-modal="true">
-          <div className="ia-card-overlay-content">
-            <div className="ia-card-overlay-header">
-              <div className="ia-card-overlay-titles">
-                <span className="ia-card-tag">{subtitle}</span>
-                <h3 className="ia-card-title">{title}</h3>
-              </div>
-              <button
-                type="button"
-                className="ia-card-close"
-                onClick={event => {
-                  event.stopPropagation();
-                  onCloseExpanded(id);
-                }}
-              >
-                Cerrar
-              </button>
-            </div>
-            <div className="ia-card-overlay-body">{renderBody(body, "overlay")}</div>
-          </div>
-          <button
-            type="button"
-            className="ia-card-overlay-backdrop"
-            aria-label="Cerrar"
-            onClick={() => onCloseExpanded(id)}
-          />
-        </div>
-      ) : null}
-    </>
+      <div style={isOpen ? { ...accordionContentStyle, ...accordionContentExpandedStyle } : accordionContentStyle}>
+        {renderBody(body)}
+      </div>
+    </div>
   );
 }
 
 export default function Guidelines() {
   const guidelines = useMemo(() => buildGuidelines(), []);
-  const [cardStates, setCardStates] = useState(() => guidelines.map(() => "front"));
+  // `expandedId` almacena el ID de la tarjeta actualmente abierta (null si ninguna)
+  const [expandedId, setExpandedId] = useState(null);
 
-  const handleCardClick = id => {
-    setCardStates(prev => {
-      return guidelines.map((item, index) => {
-        if (item.id !== id) {
-          // Si el usuario hace clic en una tarjeta, cualquier otra tarjeta expandida o girada vuelve al frente.
-          return prev[index] === "expanded" ? "front" : prev[index] === "back" ? "front" : prev[index];
-        }
-        const currentState = prev[index];
-        // Lógica de transición de estados: front -> back -> expanded -> front
-        if (currentState === "front") return "back";
-        if (currentState === "back") return "expanded";
-        return "front";
-      });
-    });
-  };
-
-  const handleCloseExpanded = id => {
-    setCardStates(prev =>
-      guidelines.map((item, index) => {
-        if (item.id === id) return "front"; // Al cerrar el overlay, vuelve al estado frontal
-        return prev[index] === "expanded" ? "front" : prev[index]; // Cierra cualquier otro overlay por si acaso
-      })
-    );
+  const handleToggle = (id) => {
+    setExpandedId(prevId => (prevId === id ? null : id)); // Abre si está cerrado, cierra si está abierto
   };
 
   // Estilos de riesgo individuales (colores)
-  const greenItemStyle = { 
-    ...riskItemStyle, 
-    borderColor: "rgba(74, 222, 128, 0.6)", 
-    background: "rgba(22, 163, 74, 0.2)" 
+  const greenItemColorStyle = { 
+    background: "rgba(34, 197, 94, 0.15)", 
+    borderColor: "rgba(34, 197, 94, 0.4)",
+    color: "#a7f3d0", // texto más claro
   };
-  const yellowItemStyle = { 
-    ...riskItemStyle, 
-    borderColor: "rgba(250, 204, 21, 0.6)", 
-    background: "rgba(202, 138, 4, 0.25)" 
+  const yellowItemColorStyle = { 
+    background: "rgba(250, 204, 21, 0.15)", 
+    borderColor: "rgba(250, 204, 21, 0.4)",
+    color: "#fde68a", // texto más claro
   };
-  const redItemStyle = { 
-    ...riskItemStyle, 
-    borderColor: "rgba(248, 113, 113, 0.6)", 
-    background: "rgba(220, 38, 38, 0.25)" 
+  const redItemColorStyle = { 
+    background: "rgba(239, 68, 68, 0.15)", 
+    borderColor: "rgba(239, 68, 68, 0.4)",
+    color: "#fca5a5", // texto más claro
   };
+
 
   return (
     <div style={pageStyle}>
@@ -325,54 +355,53 @@ export default function Guidelines() {
         </p>
       </section>
 
-      <section className="ia-grid" aria-label="TRÓPICA AI Guidelines">
-        {guidelines.map((guideline, index) => (
-          <GuidelineCard
+      <section style={accordionSectionStyle} aria-label="TRÓPICA AI Guidelines">
+        {guidelines.map((guideline) => (
+          <GuidelineAccordionItem
             key={guideline.id}
             guideline={guideline}
-            state={cardStates[index]}
-            onCardClick={handleCardClick}
-            onCloseExpanded={handleCloseExpanded}
+            isOpen={expandedId === guideline.id}
+            onToggle={() => handleToggle(guideline.id)}
           />
         ))}
       </section>
 
       <section style={riskBlockStyle}>
-        <div className="ia-section-header">
-          <h2 style={{ margin: "0 0 12px", fontSize: 26, color: 'inherit' }}>Sistema de Evaluación de Riesgos</h2>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: 'inherit' }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: 'inherit' }}>Sistema de Evaluación de Riesgos</h2>
+          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: '#d1d5db' }}>
             Usa esta escala para clasificar cada iniciativa con IA y asegurar los niveles adecuados de revisión y
             aprobación.
           </p>
         </div>
         <div style={riskGridStyle}>
-          <div style={greenItemStyle}>
-            <h3 style={{ margin: 0, fontSize: 18 }}>VERDE</h3>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ ...riskItemStyle, ...greenItemColorStyle }}>
+            <h3 style={riskTitleStyle}>VERDE</h3>
+            <p style={riskDescriptionStyle}>
               Aprobación de Líder de Equipo — borradores internos, brainstorming.
             </p>
           </div>
-          <div style={yellowItemStyle}>
-            <h3 style={{ margin: 0, fontSize: 18 }}>AMARILLO</h3>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ ...riskItemStyle, ...yellowItemColorStyle }}>
+            <h3 style={riskTitleStyle}>AMARILLO</h3>
+            <p style={riskDescriptionStyle}>
               Director Creativo + Compliance — presentaciones para clientes.
             </p>
           </div>
-          <div style={redItemStyle}>
-            <h3 style={{ margin: 0, fontSize: 18 }}>ROJO</h3>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ ...riskItemStyle, ...redItemColorStyle }}>
+            <h3 style={riskTitleStyle}>ROJO</h3>
+            <p style={riskDescriptionStyle}>
               Legal + Dirección Ejecutiva — campañas públicas, datos de cliente.
             </p>
           </div>
         </div>
         <div style={motionBlockStyle}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 18 }}>Etiquetado Motion</h3>
-            <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.6 }}>
+            <h3 style={motionTitleStyle}>Etiquetado Motion</h3>
+            <p style={motionFormatStyle}>
               Formato: [IA-HERRAMIENTA] - [PROPÓSITO] - [NIVEL-RIESGO]
             </p>
           </div>
-          <div style={{ display: "grid", gap: 6, fontSize: 14, lineHeight: 1.6 }}>
+          <div style={motionExampleStyle}>
             <span>ChatGPT - Lluvia de titulares - VERDE</span>
             <span>Midjourney - Conceptos visuales - AMARILLO</span>
             <span>Claude - Presentación a cliente - ROJO</span>
