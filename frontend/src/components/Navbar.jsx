@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const navStyles = {
   container: {
@@ -45,9 +45,42 @@ const navStyles = {
     borderRadius: 12,
     cursor: "pointer",
     color: isActive ? "#0f172a" : "#e2e8f0",
-    background: isActive ? "#93c5fd" : "transparent",
+    background: isActive ? "#f8fafc" : "transparent",
     fontWeight: isActive ? 600 : 500,
     transition: "all 0.15s ease",
+    border: "none",
+  }),
+  dropdownWrapper: {
+    position: "relative",
+  },
+  dropdown: {
+    position: "absolute",
+    top: "calc(100% + 8px)",
+    left: 0,
+    background: "#0f172a",
+    borderRadius: 16,
+    boxShadow: "0 14px 30px rgba(15, 23, 42, 0.28)",
+    padding: 8,
+    display: "grid",
+    gap: 4,
+    minWidth: 200,
+    zIndex: 20,
+  },
+  dropdownItem: isActive => ({
+    padding: "10px 14px",
+    borderRadius: 12,
+    cursor: "pointer",
+    background: isActive ? "rgba(148, 197, 253, 0.18)" : "transparent",
+    color: isActive ? "#93c5fd" : "#e2e8f0",
+    fontWeight: isActive ? 600 : 500,
+    border: "none",
+    textAlign: "left",
+  }),
+  caret: isActive => ({
+    marginLeft: 8,
+    transition: "transform 0.2s ease",
+    transform: isActive ? "rotate(180deg)" : "rotate(0deg)",
+    display: "inline-flex",
   }),
   user: {
     display: "flex",
@@ -79,9 +112,51 @@ const navStyles = {
 };
 
 export default function Navbar({ active = "home", onNavigate, user, onSignOut, showAdmin = false }) {
+  const [openMenu, setOpenMenu] = useState(null);
+  const iaDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (openMenu === "ia" && iaDropdownRef.current && !iaDropdownRef.current.contains(event.target)) {
+        setOpenMenu(null);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setOpenMenu(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [openMenu]);
+
+  useEffect(() => {
+    setOpenMenu(null);
+  }, [active]);
+
+  const handleNavigate = id => {
+    onNavigate?.(id);
+    setOpenMenu(null);
+  };
+
   const menuItems = [
     { id: "home", label: "Inicio" },
-    { id: "ia", label: "IA" },
+    {
+      id: "ia",
+      label: "IA",
+      children: [
+        { id: "ia-automations", label: "Automatizaciones" },
+        { id: "ia-licenses", label: "Licencias" },
+        { id: "ia-guidelines", label: "Guidelines" },
+      ],
+    },
   ];
 
   if (showAdmin) {
@@ -96,21 +171,53 @@ export default function Navbar({ active = "home", onNavigate, user, onSignOut, s
           <span style={navStyles.brandAccent}>toolkit</span>
         </div>
         <nav style={navStyles.menu}>
-          {menuItems.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onNavigate?.(item.id)}
-              style={{
-                ...navStyles.item(active === item.id),
-                border: "none",
-                background: active === item.id ? "#f8fafc" : "transparent",
-                color: active === item.id ? "#0f172a" : "#e2e8f0",
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {menuItems.map(item => {
+            if (item.children) {
+              const isChildActive = item.children.some(child => child.id === active);
+              const isOpen = openMenu === item.id;
+
+              return (
+                <div key={item.id} style={navStyles.dropdownWrapper} ref={iaDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenMenu(prev => (prev === item.id ? null : item.id))}
+                    style={navStyles.item(isChildActive)}
+                    aria-haspopup="true"
+                    aria-expanded={isOpen}
+                  >
+                    {item.label}
+                    <span style={navStyles.caret(isOpen)}>▾</span>
+                  </button>
+                  {isOpen ? (
+                    <div style={navStyles.dropdown} role="menu">
+                      {item.children.map(child => (
+                        <button
+                          key={child.id}
+                          type="button"
+                          style={navStyles.dropdownItem(active === child.id)}
+                          onClick={() => handleNavigate(child.id)}
+                          role="menuitem"
+                        >
+                          {child.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleNavigate(item.id)}
+                style={navStyles.item(active === item.id)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
         <div style={navStyles.user}>
           <div style={navStyles.avatar}>
