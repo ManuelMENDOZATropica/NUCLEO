@@ -10,7 +10,7 @@ function buildApiUrl(path = "") {
 }
 
 const INITIAL_ASSISTANT_MESSAGE =
-  "Hi! 🌞 Where are you from, and which language would you like to continue in — Spanish, Portuguese or English?";
+  "Hi! 🌞 I’m MELISA — your tropical creative director at TRÓPICA, specialized in Mercado Ads.  I’ll help you shape a complete, strategic, and beautiful brief with a warm human touch.  Before we dive in — where are you from, and which language would you like to continue in: Spanish, Portuguese, or English?";
 
 const pageStyles = {
   container: {
