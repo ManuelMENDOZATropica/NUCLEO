@@ -29,7 +29,7 @@ const TEMPLATE_DOC_PATH = path.join(
   "brief template.docx"
 );
 
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flashgit ";
 const DEFAULT_DRIVE_FOLDER = "1kuf5eNjWce1d7yNGjvEm7n0FAR44hO5k";
 
 let cachedContext = null;
