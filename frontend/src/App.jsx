@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Automations from "./pages/Automations";
 import Licenses from "./pages/Licenses";
 import Guidelines from "./pages/Guidelines";
+import BriefBuddy from "./pages/BriefBuddy";
 import Admin from "./pages/Admin";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -536,6 +537,7 @@ export default function App() {
         {activeView === "ia-automations" && <Automations />}
         {activeView === "ia-licenses" && <Licenses />}
         {activeView === "ia-guidelines" && <Guidelines />}
+        {activeView === "ia-brief-buddy" && <BriefBuddy />}
         {activeView === "admin" && canAccessAdmin && (
           <Admin
             users={users}

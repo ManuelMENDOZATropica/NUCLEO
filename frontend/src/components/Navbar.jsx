@@ -155,6 +155,7 @@ export default function Navbar({ active = "home", onNavigate, user, onSignOut, s
         { id: "ia-automations", label: "Automatizaciones" },
         { id: "ia-licenses", label: "Licencias" },
         { id: "ia-guidelines", label: "Guidelines" },
+        { id: "ia-brief-buddy", label: "Brief Buddy" },
       ],
     },
   ];
