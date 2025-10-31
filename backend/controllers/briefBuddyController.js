@@ -31,6 +31,7 @@ const TEMPLATE_DOC_PATH = path.join(
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const DEFAULT_DRIVE_FOLDER = "1kuf5eNjWce1d7yNGjvEm7n0FAR44hO5k";
+const MAX_PDF_BYTES = 8 * 1024 * 1024;
 
 let cachedContext = null;
 
@@ -54,7 +55,7 @@ function normalizeMessages(messages = []) {
     .filter(Boolean);
 }
 
-async function callGemini({ messages, extraPrompt, temperature = 0.7 }) {
+async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputTokens = 1024 }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY no está configurada");
@@ -63,24 +64,22 @@ async function callGemini({ messages, extraPrompt, temperature = 0.7 }) {
   const context = await loadContext();
   const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
 
-  const contents = normalizeMessages(messages);
-  if (extraPrompt) {
-    contents.push({ role: "user", parts: [{ text: extraPrompt }] });
-  }
-
-  if (contents.length === 0) {
-    contents.push({
-      role: "user",
-      parts: [
-        {
-          text: "Inicia la conversación siguiendo las instrucciones de MELISA y BriefBuddy.",
-        },
-      ],
-    });
+  let effectiveContents = Array.isArray(contents) ? contents.filter(Boolean) : [];
+  if (effectiveContents.length === 0) {
+    effectiveContents = [
+      {
+        role: "user",
+        parts: [
+          {
+            text: "Inicia la conversación siguiendo las instrucciones de MELISA y BriefBuddy.",
+          },
+        ],
+      },
+    ];
   }
 
   const body = {
-    contents,
+    contents: effectiveContents,
     systemInstruction: {
       parts: [{ text: context }],
     },
@@ -88,7 +87,7 @@ async function callGemini({ messages, extraPrompt, temperature = 0.7 }) {
       temperature,
       topP: 0.9,
       topK: 40,
-      maxOutputTokens: 1024,
+      maxOutputTokens,
     },
   };
 
@@ -122,6 +121,15 @@ async function callGemini({ messages, extraPrompt, temperature = 0.7 }) {
     .trim();
 
   return { text, raw: json };
+}
+
+async function callGemini({ messages, extraPrompt, temperature = 0.7, maxOutputTokens = 1024 }) {
+  const contents = normalizeMessages(messages);
+  if (extraPrompt) {
+    contents.push({ role: "user", parts: [{ text: extraPrompt }] });
+  }
+
+  return executeGeminiRequest({ contents, temperature, maxOutputTokens });
 }
 
 function extractJsonBlock(text) {
@@ -552,5 +560,163 @@ Devuelve únicamente el JSON válido sin explicaciones adicionales.`;
   } catch (error) {
     console.error("Error al finalizar BriefBuddy", error);
     res.status(500).json({ message: error.message || "Error interno" });
+  }
+}
+
+export async function prefillBriefFromPdf(req, res) {
+  try {
+    const fileName = typeof req.body?.fileName === "string" ? req.body.fileName : "Documento";
+    const rawData = typeof req.body?.fileData === "string" ? req.body.fileData : "";
+
+    if (!rawData) {
+      return res.status(400).json({ message: "Se requiere el archivo en formato base64" });
+    }
+
+    const commaIndex = rawData.indexOf(",");
+    const base64Payload = (commaIndex !== -1 ? rawData.slice(commaIndex + 1) : rawData).trim();
+    let buffer;
+    try {
+      buffer = Buffer.from(base64Payload, "base64");
+    } catch (error) {
+      return res.status(400).json({ message: "No se pudo decodificar el archivo proporcionado" });
+    }
+
+    if (!buffer || buffer.length === 0) {
+      return res.status(400).json({ message: "El archivo está vacío" });
+    }
+
+    if (buffer.length > MAX_PDF_BYTES) {
+      return res.status(400).json({ message: "El PDF supera el tamaño máximo permitido (8 MB)" });
+    }
+
+    const signature = buffer.slice(0, 4).toString("utf8");
+    if (!signature.includes("%PDF")) {
+      return res.status(400).json({ message: "El archivo proporcionado no parece ser un PDF válido" });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY no está configurada");
+    }
+
+    const cleanedBase64 = buffer.toString("base64");
+    const sanitizedName = fileName.replace(/[\r\n]+/g, " ").trim();
+    const truncatedName = sanitizedName.length > 160 ? `${sanitizedName.slice(0, 157)}...` : sanitizedName;
+    const safeName = truncatedName.replace(/["`]/g, "'") || "Documento";
+    const instructions = `Analiza el documento PDF adjunto titulado "${safeName}". Debes:
+- Extraer la mayor cantidad posible de información relevante para completar un brief de Mercado Ads siguiendo la estructura oficial.
+- Mantener los datos en el idioma en el que aparezcan y evitar inventar información.
+- Cuando no exista información suficiente para responder a una sección o pregunta, deja el campo vacío y registra la pregunta pendiente correspondiente.
+
+Devuelve exclusivamente un JSON válido con esta forma:
+{
+  "assistantMessage": "string",
+  "prefilled": {
+    "project": {
+      "name": "string",
+      "brand": "string",
+      "country": "string",
+      "language": "string",
+      "meliLead": "string",
+      "brandLead": "string",
+      "type": "string",
+      "timeline": "string"
+    },
+    "challenge": {
+      "context": "string",
+      "tweet": "string",
+      "metrics": {
+        "primary": "string",
+        "secondary": "string",
+        "commerce": ["string"],
+        "brand": ["string"],
+        "engagement": ["string"]
+      }
+    },
+    "strategy": {
+      "target": "string",
+      "insight": "string",
+      "brandTruth": "string",
+      "culturalContext": "string",
+      "competitors": "string",
+      "differentiation": "string"
+    },
+    "creative": {
+      "concept": "string",
+      "keyMessage": "string",
+      "emotionalTerritory": "string"
+    },
+    "architecture": {
+      "tagline": "string",
+      "contentPillars": "string"
+    },
+    "appendix": {
+      "mandatory": ["string"],
+      "optional": ["string"],
+      "links": ["string"]
+    },
+    "ecosystem": {
+      "opportunities": ["string"],
+      "notes": "string"
+    },
+    "promotion": {
+      "mechanics": ["string"],
+      "details": "string"
+    },
+    "media": {
+      "core": ["string"],
+      "amplification": ["string"]
+    },
+    "production": {
+      "timeline": "string",
+      "budget": "string",
+      "assets": "string",
+      "notes": "string"
+    }
+  },
+  "missingQuestions": ["string"]
+}
+
+El campo "assistantMessage" debe ser un mensaje en español y con tono cálido de MELISA que:
+- Resuma los hallazgos clave organizados por secciones.
+- Aclare qué preguntas siguen pendientes o necesitan más detalle usando viñetas.
+- Invite a la persona usuaria a completar la información faltante.
+
+No incluyas texto adicional fuera del JSON.`;
+
+    const contents = [
+      {
+        role: "user",
+        parts: [
+          { text: instructions },
+          {
+            inlineData: {
+              mimeType: "application/pdf",
+              data: cleanedBase64,
+            },
+          },
+        ],
+      },
+    ];
+
+    const { text } = await executeGeminiRequest({ contents, temperature: 0.3, maxOutputTokens: 2048 });
+    const parsed = extractJsonBlock(text);
+
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("No se pudo obtener un JSON válido a partir del PDF");
+    }
+
+    const assistantMessage = typeof parsed.assistantMessage === "string" ? parsed.assistantMessage.trim() : "";
+    const prefilled = parsed.prefilled && typeof parsed.prefilled === "object" ? parsed.prefilled : {};
+    const missingQuestions = Array.isArray(parsed.missingQuestions) ? parsed.missingQuestions.filter(Boolean) : [];
+
+    res.json({
+      assistantMessage,
+      prefilled,
+      missingQuestions,
+    });
+  } catch (error) {
+    console.error("Error al prellenar brief desde PDF", error);
+    res.status(500).json({ message: error.message || "Error al analizar el PDF" });
   }
 }
