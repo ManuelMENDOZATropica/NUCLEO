@@ -124,7 +124,7 @@ const pageStyles = {
     flexWrap: "wrap",
     gap: 12,
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   finalizeButton: isDisabled => ({
     background: isDisabled ? "#94a3b8" : "#047857",
@@ -142,6 +142,40 @@ const pageStyles = {
     fontSize: 14,
     color,
   }),
+  buttonGroup: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 12,
+    alignItems: "center",
+  },
+  uploadButton: isUploading => ({
+    background: isUploading ? "#94a3b8" : "#0f172a",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: 12,
+    padding: "12px 20px",
+    fontWeight: 600,
+    fontSize: 15,
+    cursor: isUploading ? "not-allowed" : "pointer",
+    opacity: isUploading ? 0.75 : 1,
+    transition: "all 0.2s ease",
+  }),
+  statusGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    alignItems: "flex-end",
+    flex: 1,
+    minWidth: 220,
+  },
+  pendingList: {
+    margin: 0,
+    paddingLeft: 18,
+    fontSize: 13,
+    color: "#6b7280",
+    lineHeight: 1.5,
+    textAlign: "left",
+  },
   transcriptSection: {
     background: "#ffffff",
     borderRadius: 20,
@@ -175,7 +209,22 @@ export default function BriefBuddy() {
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [error, setError] = useState("");
   const [finalInfo, setFinalInfo] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [pendingQuestions, setPendingQuestions] = useState([]);
+  const [lastUpload, setLastUpload] = useState(null);
   const bodyRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+  const readFileAsDataUrl = file =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
+      reader.onabort = () => reject(new Error("La lectura del archivo fue cancelada"));
+      reader.readAsDataURL(file);
+    });
 
   const formattedMessages = useMemo(
     () =>
@@ -192,6 +241,94 @@ export default function BriefBuddy() {
         bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
       }
     });
+  };
+
+  const handleUploadClick = () => {
+    if (isUploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError("El PDF supera el límite de 8 MB permitido.");
+      event.target.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+    setError("");
+    setPendingQuestions([]);
+    setLastUpload(null);
+    setFinalInfo(null);
+
+    const timestamp = Date.now();
+    const userMessage = {
+      id: `user-${timestamp}`,
+      role: "user",
+      content: `Acabo de subir el PDF "${file.name}" para que lo analices y completes el brief automáticamente.`,
+    };
+    setMessages(prev => [...prev, userMessage]);
+    scrollToBottom();
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const response = await fetch(buildApiUrl("/api/brief-buddy/prefill"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileData: dataUrl }),
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        const message = errJson.message || "No se pudo analizar el PDF";
+        throw new Error(message);
+      }
+
+      const json = await response.json();
+      const assistantText = json.assistantMessage && json.assistantMessage.trim()
+        ? json.assistantMessage.trim()
+        : "He revisado el documento, pero no pude extraer información clara. ¿Podrías compartir más detalles?";
+
+      const assistantMessage = {
+        id: `assistant-${timestamp + 1}`,
+        role: "assistant",
+        content: assistantText,
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      scrollToBottom();
+
+      const pending = Array.isArray(json.missingQuestions)
+        ? json.missingQuestions.filter(item => typeof item === "string" && item.trim().length > 0)
+        : [];
+
+      setPendingQuestions(pending);
+      setLastUpload({
+        fileName: file.name,
+        missingCount: pending.length,
+      });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "No se pudo procesar el PDF");
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content:
+            "No pude analizar el PDF. ¿Podrías intentar con otro archivo o compartir la información clave aquí mismo?",
+        },
+      ]);
+      scrollToBottom();
+    } finally {
+      setIsUploading(false);
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
   };
 
   const sendMessage = async event => {
@@ -306,21 +443,57 @@ export default function BriefBuddy() {
             </button>
           </form>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            style={{ display: "none" }}
+            onChange={handleFileUpload}
+          />
+
           <div style={pageStyles.footerActions}>
-            <button
-              type="button"
-              style={pageStyles.finalizeButton(isFinalizing)}
-              disabled={isFinalizing}
-              onClick={finalizeBrief}
-            >
-              {isFinalizing ? "Generando brief..." : "Finalizar y enviar"}
-            </button>
-            {error && <span style={pageStyles.statusText("#dc2626")}>{error}</span>}
-            {finalInfo && !error && (
-              <span style={pageStyles.statusText("#047857")}>
-                Documento generado: <strong>{finalInfo.fileName}</strong>
-              </span>
-            )}
+            <div style={pageStyles.buttonGroup}>
+              <button
+                type="button"
+                style={pageStyles.uploadButton(isUploading)}
+                disabled={isUploading}
+                onClick={handleUploadClick}
+              >
+                {isUploading ? "Analizando PDF..." : "Cargar brief en PDF"}
+              </button>
+              <button
+                type="button"
+                style={pageStyles.finalizeButton(isFinalizing)}
+                disabled={isFinalizing}
+                onClick={finalizeBrief}
+              >
+                {isFinalizing ? "Generando brief..." : "Finalizar y enviar"}
+              </button>
+            </div>
+
+            <div style={pageStyles.statusGroup}>
+              {error && <span style={pageStyles.statusText("#dc2626")}>{error}</span>}
+              {lastUpload && (
+                <span style={pageStyles.statusText("#0f172a")}>
+                  PDF analizado: <strong>{lastUpload.fileName}</strong>
+                  {lastUpload.missingCount > 0
+                    ? ` · Pendientes detectados: ${lastUpload.missingCount}`
+                    : " · Toda la información requerida parece estar completa."}
+                </span>
+              )}
+              {pendingQuestions.length > 0 && (
+                <ul style={pageStyles.pendingList}>
+                  {pendingQuestions.map((question, index) => (
+                    <li key={`pending-question-${index}`}>{question}</li>
+                  ))}
+                </ul>
+              )}
+              {finalInfo && !error && (
+                <span style={pageStyles.statusText("#047857")}>
+                  Documento generado: <strong>{finalInfo.fileName}</strong>
+                </span>
+              )}
+            </div>
           </div>
         </footer>
       </section>
