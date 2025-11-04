@@ -310,8 +310,11 @@ export default function BriefBuddy() {
         missingCount: pending.length,
       });
     } catch (err) {
-      console.error(err);
-      setError(err.message || "No se pudo procesar el PDF");
+      console.error("Error al procesar el PDF con pdf.js", err);
+      const message = err && typeof err.message === "string" && err.message.trim().length > 0
+        ? err.message.trim()
+        : "No se pudo procesar el PDF con pdf.js";
+      setError(message);
       setMessages(prev => [
         ...prev,
         {
