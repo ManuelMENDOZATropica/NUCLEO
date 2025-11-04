@@ -34,6 +34,39 @@ const TEMPLATE_DOC_PATH = path.join(
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const DEFAULT_DRIVE_FOLDER = "1kuf5eNjWce1d7yNGjvEm7n0FAR44hO5k";
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
+const MAX_DIRECT_TEXT_LENGTH = 20000;
+export const MAX_CHUNK_LENGTH = 12000;
+export const CHUNK_OVERLAP = 800;
+export const MAX_NOTES_PER_SECTION = 8;
+const MAX_NOTE_LENGTH = 400;
+const MAX_AGGREGATED_MISSINGS = 30;
+const MAX_FINAL_OUTPUT_TOKENS = 3072;
+
+const NOTE_SECTION_KEYS = [
+  "project",
+  "challenge",
+  "strategy",
+  "creative",
+  "architecture",
+  "appendix",
+  "ecosystem",
+  "promotion",
+  "media",
+  "production",
+];
+
+const NOTE_SECTION_LABELS = {
+  project: "Proyecto",
+  challenge: "Desafío",
+  strategy: "Estrategia",
+  creative: "Creativo",
+  architecture: "Arquitectura",
+  appendix: "Apéndice",
+  ecosystem: "Ecosistema",
+  promotion: "Promoción",
+  media: "Medios",
+  production: "Producción",
+};
 
 async function loadContext() {
   try {
@@ -59,6 +92,172 @@ function normalizeMessages(messages = []) {
       return { role, parts: [{ text: content }] };
     })
     .filter(Boolean);
+}
+
+function truncateWithEllipsis(text, maxLength) {
+  if (typeof text !== "string") return "";
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(1, maxLength - 1))}…`;
+}
+
+function limitPromptBlock(value, limit) {
+  if (typeof value !== "string") return "";
+  if (value.length <= limit) return value;
+  return `${value.slice(0, Math.max(0, limit - 1))}…`;
+}
+
+export function splitTextIntoChunks(text, chunkLength = MAX_CHUNK_LENGTH, overlap = CHUNK_OVERLAP) {
+  if (typeof text !== "string") {
+    return [];
+  }
+
+  const normalized = text.replace(/\r\n/g, "\n").trim();
+  if (!normalized) {
+    return [];
+  }
+
+  if (normalized.length <= chunkLength) {
+    return [normalized];
+  }
+
+  const chunks = [];
+  let start = 0;
+
+  while (start < normalized.length) {
+    let end = Math.min(start + chunkLength, normalized.length);
+
+    if (end < normalized.length) {
+      const paragraphBreak = normalized.lastIndexOf("\n\n", end);
+      if (paragraphBreak > start + 2000) {
+        end = paragraphBreak + 2;
+      } else {
+        const sentenceBreak = normalized.lastIndexOf(". ", end);
+        if (sentenceBreak > start + 2000) {
+          end = sentenceBreak + 2;
+        }
+      }
+    }
+
+    const chunk = normalized.slice(start, end).trim();
+    if (chunk) {
+      chunks.push(chunk);
+    }
+
+    if (end >= normalized.length) {
+      break;
+    }
+
+    const nextStart = Math.max(end - overlap, start + 1);
+    start = nextStart;
+  }
+
+  return chunks;
+}
+
+function createEmptySectionNotes() {
+  return NOTE_SECTION_KEYS.reduce((acc, key) => {
+    acc[key] = [];
+    return acc;
+  }, {});
+}
+
+export function mergeSectionNotes(targetNotes, sourceNotes = {}) {
+  const merged = targetNotes ? { ...targetNotes } : createEmptySectionNotes();
+
+  for (const key of NOTE_SECTION_KEYS) {
+    if (!Array.isArray(merged[key])) {
+      merged[key] = [];
+    }
+
+    const incoming = Array.isArray(sourceNotes?.[key]) ? sourceNotes[key] : [];
+    for (const note of incoming) {
+      const normalized = truncateWithEllipsis(note, MAX_NOTE_LENGTH);
+      if (!normalized) continue;
+      if (merged[key].includes(normalized)) continue;
+      if (merged[key].length >= MAX_NOTES_PER_SECTION) continue;
+      merged[key].push(normalized);
+    }
+  }
+
+  return merged;
+}
+
+function notesHaveContent(notes) {
+  return NOTE_SECTION_KEYS.some(key => Array.isArray(notes?.[key]) && notes[key].length > 0);
+}
+
+function formatNotesForPrompt(notes) {
+  return NOTE_SECTION_KEYS.map(key => {
+    const label = NOTE_SECTION_LABELS[key] || key;
+    const items = Array.isArray(notes?.[key]) ? notes[key] : [];
+    if (items.length === 0) {
+      return `### ${label}\n- (sin datos)`;
+    }
+
+    const bulletList = items.map(item => `- ${item}`).join("\n");
+    return `### ${label}\n${bulletList}`;
+  }).join("\n\n");
+}
+
+function addMissingQuestions(store, questions) {
+  const target = store instanceof Set ? store : new Set();
+  if (!Array.isArray(questions)) {
+    return target;
+  }
+
+  for (const question of questions) {
+    const normalized = truncateWithEllipsis(question, MAX_NOTE_LENGTH);
+    if (!normalized) continue;
+    if (target.size >= MAX_AGGREGATED_MISSINGS && target.has(normalized)) {
+      continue;
+    }
+    target.add(normalized);
+    if (target.size > MAX_AGGREGATED_MISSINGS) {
+      const limited = Array.from(target).slice(0, MAX_AGGREGATED_MISSINGS);
+      target.clear();
+      for (const item of limited) {
+        target.add(item);
+      }
+      break;
+    }
+  }
+
+  return target;
+}
+
+function formatMissingQuestions(questions) {
+  if (!questions || questions.length === 0) {
+    return "No se detectaron preguntas pendientes en las notas previas.";
+  }
+
+  const bullets = questions.map(question => `- ${question}`).join("\n");
+  return `Preguntas pendientes detectadas hasta ahora:\n${bullets}`;
+}
+
+function appendSummary(summaries, summary) {
+  if (!Array.isArray(summaries)) {
+    return [];
+  }
+
+  const normalized = truncateWithEllipsis(summary, MAX_NOTE_LENGTH * 2);
+  if (!normalized) {
+    return summaries;
+  }
+
+  summaries.push(normalized);
+  return summaries;
+}
+
+function formatChunkSummaries(summaries) {
+  if (!Array.isArray(summaries) || summaries.length === 0) {
+    return "";
+  }
+
+  return summaries
+    .map((summary, index) => `Fragmento ${index + 1}: ${summary}`)
+    .join("\n\n");
 }
 
 export class GeminiResponseError extends Error {
@@ -860,7 +1059,7 @@ export async function prefillBriefFromPdf(req, res) {
     const sanitizedName = fileName.replace(/[\r\n]+/g, " ").trim();
     const truncatedName = sanitizedName.length > 160 ? `${sanitizedName.slice(0, 157)}...` : sanitizedName;
     const safeName = truncatedName.replace(/["`]/g, "'") || "Documento";
-    const instructions = `Analiza el contenido textual extraído del PDF titulado "${safeName}". Debes:
+    const baseInstructions = `Analiza el contenido textual extraído del PDF titulado "${safeName}". Debes:
 - Extraer la mayor cantidad posible de información relevante para completar un brief de Mercado Ads siguiendo la estructura oficial.
 - Mantener los datos en el idioma en el que aparezcan y evitar inventar información.
 - Cuando no exista información suficiente para responder a una sección o pregunta, deja el campo vacío y registra la pregunta pendiente correspondiente.
@@ -941,22 +1140,120 @@ El campo "assistantMessage" debe ser un mensaje en español y con tono cálido d
 
 No incluyas texto adicional fuera del JSON.`;
 
-    const contents = [
-      {
-        role: "user",
-        parts: [
-          { text: instructions },
-          { text: `Contenido extraído del PDF:\n\n${truncatedText}` },
-        ],
-      },
-    ];
+    const chunkTexts = splitTextIntoChunks(truncatedText, MAX_CHUNK_LENGTH, CHUNK_OVERLAP);
+    const shouldUseChunking = chunkTexts.length > 1 || truncatedText.length > MAX_DIRECT_TEXT_LENGTH;
+    let finalResponseText = "";
+    let aggregatedMissing = new Set();
 
-    const { text } = await executeGeminiRequest({ contents, temperature: 0.3, maxOutputTokens: 2048 });
-    const parsed = extractJsonBlock(text);
+    if (!shouldUseChunking) {
+      const directContents = [
+        {
+          role: "user",
+          parts: [
+            { text: baseInstructions },
+            { text: `Contenido extraído del PDF:\n\n${truncatedText}` },
+          ],
+        },
+      ];
+
+      const { text: modelText } = await executeGeminiRequest({
+        contents: directContents,
+        temperature: 0.3,
+        maxOutputTokens: MAX_FINAL_OUTPUT_TOKENS,
+      });
+      finalResponseText = modelText;
+    } else {
+      let aggregatedNotes = mergeSectionNotes(null, {});
+      const chunkSummaries = [];
+
+      for (let index = 0; index < chunkTexts.length; index += 1) {
+        const chunk = chunkTexts[index];
+        const chunkIndex = index + 1;
+        const chunkSchemaLines = NOTE_SECTION_KEYS.map(key => `    "${key}": ["dato breve"]`).join(",\n");
+        const chunkInstructions = `Analiza el fragmento ${chunkIndex} de ${chunkTexts.length} del PDF titulado "${safeName}". Extrae hallazgos concretos que ayuden a completar el brief y devuélvelos en un JSON válido con la forma:\n{\n  "summary": "máximo 5 oraciones en español con los datos clave del fragmento",\n  "notes": {\n${chunkSchemaLines}\n  },\n  "missingQuestions": ["pregunta puntual"]\n}\n- Cada arreglo debe contener como máximo ${MAX_NOTES_PER_SECTION} apuntes cortos (menos de 25 palabras) y evitar duplicados.\n- Mantén el idioma original de cada dato.\n- Si una sección no tiene información, deja el arreglo vacío.\n- Las preguntas pendientes deben ser concretas y accionables.\n- No añadas texto fuera del JSON.`;
+
+        const chunkContents = [
+          {
+            role: "user",
+            parts: [
+              { text: chunkInstructions },
+              { text: `Fragmento del PDF:\n\n${chunk}` },
+            ],
+          },
+        ];
+
+        const { text: chunkResponse } = await executeGeminiRequest({
+          contents: chunkContents,
+          temperature: 0.2,
+          maxOutputTokens: 768,
+        });
+
+        const parsedChunk = extractJsonBlock(chunkResponse);
+        aggregatedNotes = mergeSectionNotes(aggregatedNotes, parsedChunk?.notes || {});
+        aggregatedMissing = addMissingQuestions(aggregatedMissing, parsedChunk?.missingQuestions);
+        appendSummary(chunkSummaries, parsedChunk?.summary || "");
+      }
+
+      if (!notesHaveContent(aggregatedNotes)) {
+        const fallbackContents = [
+          {
+            role: "user",
+            parts: [
+              { text: baseInstructions },
+              { text: `Contenido extraído del PDF:\n\n${truncatedText}` },
+            ],
+          },
+        ];
+
+        const { text: fallbackText } = await executeGeminiRequest({
+          contents: fallbackContents,
+          temperature: 0.3,
+          maxOutputTokens: MAX_FINAL_OUTPUT_TOKENS,
+        });
+        finalResponseText = fallbackText;
+      } else {
+        const notesPrompt = limitPromptBlock(formatNotesForPrompt(aggregatedNotes), 60000);
+        const summariesPrompt = limitPromptBlock(formatChunkSummaries(chunkSummaries), 12000);
+        const aggregatedMissingList = Array.from(aggregatedMissing);
+        const missingPrompt = limitPromptBlock(formatMissingQuestions(aggregatedMissingList), 4000);
+
+        const finalParts = [
+          {
+            text: `${baseInstructions}\n\nUsa únicamente la información proporcionada en las notas consolidadas. Si faltan datos, deja el campo vacío y registra la pregunta pendiente.`,
+          },
+          { text: `Notas consolidadas del PDF:\n\n${notesPrompt}` },
+        ];
+
+        if (aggregatedMissingList.length > 0) {
+          finalParts.push({ text: missingPrompt });
+        }
+
+        if (summariesPrompt) {
+          finalParts.push({ text: `Resúmenes parciales:\n\n${summariesPrompt}` });
+        }
+
+        const finalContents = [
+          {
+            role: "user",
+            parts: finalParts,
+          },
+        ];
+
+        const { text: finalText } = await executeGeminiRequest({
+          contents: finalContents,
+          temperature: 0.25,
+          maxOutputTokens: MAX_FINAL_OUTPUT_TOKENS,
+        });
+        finalResponseText = finalText;
+      }
+    }
+
+    const parsed = extractJsonBlock(finalResponseText);
 
     const assistantMessage = typeof parsed.assistantMessage === "string" ? parsed.assistantMessage.trim() : "";
     const prefilled = parsed.prefilled && typeof parsed.prefilled === "object" ? parsed.prefilled : {};
-    const missingQuestions = Array.isArray(parsed.missingQuestions) ? parsed.missingQuestions.filter(Boolean) : [];
+    aggregatedMissing = addMissingQuestions(aggregatedMissing, parsed.missingQuestions);
+    const missingQuestions = Array.from(aggregatedMissing);
 
     res.json({
       assistantMessage,
