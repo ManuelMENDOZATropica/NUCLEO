@@ -1,12 +1,7 @@
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.js?url";
 
-try {
-  GlobalWorkerOptions.workerSrc = new URL("pdf.worker.min.js", import.meta.url).toString();
-} catch (error) {
-  if (!GlobalWorkerOptions.workerSrc) {
-    GlobalWorkerOptions.workerSrc = "pdf.worker.min.js";
-  }
-}
+GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 function sanitizeExtractedText(segments) {
   return segments.join("\n\n").replace(/[\u0000\x00]+/g, "").trim();
