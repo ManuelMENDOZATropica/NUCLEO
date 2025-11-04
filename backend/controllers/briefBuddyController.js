@@ -6,6 +6,8 @@ import { createSign, randomUUID } from "crypto";
 import { execFile } from "child_process";
 import { promisify } from "util";
 
+import pdfParse from "../utils/pdfParse.js";
+
 const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -691,11 +693,26 @@ export async function prefillBriefFromPdf(req, res) {
       throw new Error("GEMINI_API_KEY no está configurada");
     }
 
-    const cleanedBase64 = buffer.toString("base64");
+    const { text: extractedText } = await pdfParse(buffer);
+
+    if (!extractedText) {
+      throw new GeminiResponseError(
+        "No pudimos extraer texto utilizable del PDF. Verifica que el documento contenga texto seleccionable u ofrece una versión con OCR.",
+        {
+          statusCode: 422,
+          code: "PDF_PARSE_EMPTY",
+        }
+      );
+    }
+
+    const truncatedText = extractedText.length > 80000
+      ? `${extractedText.slice(0, 80000)}\n\n[Texto truncado tras 80.000 caracteres]`
+      : extractedText;
+
     const sanitizedName = fileName.replace(/[\r\n]+/g, " ").trim();
     const truncatedName = sanitizedName.length > 160 ? `${sanitizedName.slice(0, 157)}...` : sanitizedName;
     const safeName = truncatedName.replace(/["`]/g, "'") || "Documento";
-    const instructions = `Analiza el documento PDF adjunto titulado "${safeName}". Debes:
+    const instructions = `Analiza el contenido textual extraído del PDF titulado "${safeName}". Debes:
 - Extraer la mayor cantidad posible de información relevante para completar un brief de Mercado Ads siguiendo la estructura oficial.
 - Mantener los datos en el idioma en el que aparezcan y evitar inventar información.
 - Cuando no exista información suficiente para responder a una sección o pregunta, deja el campo vacío y registra la pregunta pendiente correspondiente.
@@ -781,12 +798,7 @@ No incluyas texto adicional fuera del JSON.`;
         role: "user",
         parts: [
           { text: instructions },
-          {
-            inlineData: {
-              mimeType: "application/pdf",
-              data: cleanedBase64,
-            },
-          },
+          { text: `Contenido extraído del PDF:\n\n${truncatedText}` },
         ],
       },
     ];
