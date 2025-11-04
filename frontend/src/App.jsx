@@ -537,7 +537,7 @@ export default function App() {
         {activeView === "ia-automations" && <Automations />}
         {activeView === "ia-licenses" && <Licenses />}
         {activeView === "ia-guidelines" && <Guidelines />}
-        {activeView === "ia-brief-buddy-meli" && <BriefBuddy />}
+        {activeView === "ia-brief-buddy" && <BriefBuddy />}
         {activeView === "admin" && canAccessAdmin && (
           <Admin
             users={users}
