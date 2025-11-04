@@ -33,12 +33,8 @@ const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const DEFAULT_DRIVE_FOLDER = "1kuf5eNjWce1d7yNGjvEm7n0FAR44hO5k";
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
 
-let cachedContext = null;
-
 async function loadContext() {
-  if (cachedContext) return cachedContext;
-  cachedContext = await fs.readFile(FRONTEND_PROMPT_PATH, "utf8");
-  return cachedContext;
+  return fs.readFile(FRONTEND_PROMPT_PATH, "utf8");
 }
 
 function normalizeMessages(messages = []) {
