@@ -59,6 +59,16 @@ function normalizeMessages(messages = []) {
     .filter(Boolean);
 }
 
+class GeminiResponseError extends Error {
+  constructor(message, { statusCode = 500, code, details } = {}) {
+    super(message);
+    this.name = "GeminiResponseError";
+    this.statusCode = statusCode;
+    if (code) this.code = code;
+    if (details) this.details = details;
+  }
+}
+
 async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputTokens = 1024 }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -113,18 +123,65 @@ async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputToke
   }
 
   const json = await response.json();
-  const candidates = json.candidates || [];
-  const primary = candidates[0];
-  if (!primary || !primary.content || !Array.isArray(primary.content.parts)) {
-    throw new Error("La respuesta de Gemini no contiene contenido utilizable");
+  const promptFeedback = json?.promptFeedback;
+
+  if (promptFeedback?.blockReason) {
+    const blockReason = promptFeedback.blockReason;
+    const blockMessages = {
+      SAFETY:
+        "Gemini rechazó el PDF por políticas de seguridad. Revisa que el documento cumpla con las políticas de contenido y vuelve a intentarlo.",
+      BLOCK_REASON_UNSPECIFIED:
+        "Gemini no pudo procesar el PDF por un motivo no especificado. Intenta con un documento diferente o revisa su contenido.",
+    };
+
+    const message =
+      blockMessages[blockReason] ||
+      "Gemini no pudo procesar el PDF por un problema con el contenido enviado.";
+
+    throw new GeminiResponseError(message, {
+      statusCode: 422,
+      code: `GEMINI_PROMPT_BLOCKED_${blockReason}`,
+      details: { blockReason },
+    });
   }
 
-  const text = primary.content.parts
+  const candidates = json.candidates || [];
+  const primary = candidates[0];
+
+  if (!primary) {
+    throw new GeminiResponseError(
+      "Gemini no devolvió candidatos para procesar el PDF. Intenta nuevamente más tarde.",
+      { statusCode: 502, code: "GEMINI_NO_CANDIDATES" }
+    );
+  }
+
+  if (primary.finishReason === "SAFETY") {
+    throw new GeminiResponseError(
+      "Gemini detuvo la respuesta por políticas de seguridad. Revisa el contenido del PDF y vuelve a intentarlo.",
+      { statusCode: 422, code: "GEMINI_FINISH_SAFETY" }
+    );
+  }
+
+  if (!primary.content || !Array.isArray(primary.content.parts)) {
+    throw new GeminiResponseError(
+      "La respuesta de Gemini no contiene contenido utilizable.",
+      { statusCode: 422, code: "GEMINI_EMPTY_CONTENT" }
+    );
+  }
+
+  const textParts = primary.content.parts
     .map(part => (typeof part.text === "string" ? part.text : ""))
     .join("")
     .trim();
 
-  return { text, raw: json };
+  if (!textParts) {
+    throw new GeminiResponseError(
+      "Gemini no encontró información aprovechable en el PDF. Verifica el documento y vuelve a intentarlo.",
+      { statusCode: 422, code: "GEMINI_NO_TEXT_PARTS" }
+    );
+  }
+
+  return { text: textParts, raw: json };
 }
 
 async function callGemini({ messages, extraPrompt, temperature = 0.7, maxOutputTokens = 1024 }) {
@@ -721,6 +778,24 @@ No incluyas texto adicional fuera del JSON.`;
     });
   } catch (error) {
     console.error("Error al prellenar brief desde PDF", error);
-    res.status(500).json({ message: error.message || "Error al analizar el PDF" });
+
+    const statusCode =
+      typeof error?.statusCode === "number"
+        ? error.statusCode
+        : typeof error?.status === "number"
+        ? error.status
+        : 500;
+
+    const responseBody = { message: error.message || "Error al analizar el PDF" };
+
+    if (error?.code) {
+      responseBody.code = error.code;
+    }
+
+    if (error?.details) {
+      responseBody.details = error.details;
+    }
+
+    res.status(statusCode).json(responseBody);
   }
 }
