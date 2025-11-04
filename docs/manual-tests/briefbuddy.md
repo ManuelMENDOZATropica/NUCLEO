@@ -24,3 +24,16 @@ Estos pasos verifican que modificar el archivo de contexto de BriefBuddy surte e
 6. (Opcional) Revierte el cambio en el archivo de contexto.
 
 Si el texto añadido aparece en la segunda respuesta, el backend está cargando el archivo actualizado en cada solicitud.
+
+## Verificación manual de CORS
+1. Define la variable de entorno `CORS_ALLOWED_ORIGINS` con la URL del frontend (por ejemplo `https://nucleo-nine.vercel.app`).
+2. Inicia el servidor (`npm run dev`).
+3. Desde un navegador, abre la consola y ejecuta:
+   ```js
+   fetch("https://TU_BACKEND/api/brief-buddy/chat", {
+     method: "POST",
+     headers: { "Content-Type": "application/json" },
+     body: JSON.stringify({ messages: [{ role: "user", content: "ping" }] })
+   }).then(r => ({ ok: r.ok, status: r.status, origin: r.headers.get("access-control-allow-origin") }))
+   ```
+4. Verifica que la promesa se resuelve (no se rechaza por CORS) y que `origin` coincide con la URL configurada en `CORS_ALLOWED_ORIGINS`.
