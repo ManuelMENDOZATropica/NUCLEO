@@ -61,7 +61,7 @@ function normalizeMessages(messages = []) {
     .filter(Boolean);
 }
 
-class GeminiResponseError extends Error {
+export class GeminiResponseError extends Error {
   constructor(message, { statusCode = 500, code, details } = {}) {
     super(message);
     this.name = "GeminiResponseError";
@@ -226,33 +226,142 @@ async function callGemini({ messages, extraPrompt, temperature = 0.7, maxOutputT
   return executeGeminiRequest({ contents, temperature, maxOutputTokens });
 }
 
-function extractJsonBlock(text) {
-  if (!text) return null;
+function findNextSignificantChar(str, startIndex) {
+  for (let i = startIndex; i < str.length; i += 1) {
+    const char = str[i];
+    if (!char || /\s/.test(char)) continue;
+    return { index: i, char };
+  }
+  return null;
+}
+
+function escapeUnescapedQuotes(candidate) {
+  let inString = false;
+  let escaping = false;
+  let repaired = "";
+
+  for (let i = 0; i < candidate.length; i += 1) {
+    const char = candidate[i];
+
+    if (char === "\\" && !escaping) {
+      escaping = true;
+      repaired += char;
+      continue;
+    }
+
+    if (char === "\"" && !escaping) {
+      if (!inString) {
+        inString = true;
+        repaired += char;
+        continue;
+      }
+
+      const next = findNextSignificantChar(candidate, i + 1);
+
+      if (!next || next.char === "}" || next.char === "]" || next.char === ":") {
+        inString = false;
+        repaired += char;
+        continue;
+      }
+
+      if (next.char === ",") {
+        const afterComma = findNextSignificantChar(candidate, next.index + 1);
+        if (afterComma && (afterComma.char === "}" || afterComma.char === "]" || afterComma.char === "\"")) {
+          inString = false;
+          repaired += char;
+          continue;
+        }
+      }
+
+      repaired += "\\\"";
+      continue;
+    }
+
+    if (char === "\"" && escaping) {
+      escaping = false;
+      repaired += char;
+      continue;
+    }
+
+    if (escaping) {
+      escaping = false;
+    }
+
+    repaired += char;
+  }
+
+  return repaired;
+}
+
+function repairJsonString(candidate) {
+  let repaired = candidate
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'");
+
+  repaired = repaired.replace(/,\s*(?=[}\]])/g, match => match.replace(",", ""));
+
+  repaired = repaired.replace(/(^|[,{\[]\s*)'([^']+?)'\s*:/g, (_, prefix, key) => `${prefix}"${key}":`);
+  repaired = repaired.replace(/:\s*'([^']*?)'/g, (_, value) => `: "${value.replace(/"/g, '\\"')}"`);
+
+  repaired = escapeUnescapedQuotes(repaired);
+
+  return repaired;
+}
+
+function tryParseCandidate(candidate) {
+  try {
+    return JSON.parse(candidate);
+  } catch (firstError) {
+    try {
+      const repaired = repairJsonString(candidate);
+      return JSON.parse(repaired);
+    } catch (secondError) {
+      throw secondError instanceof Error ? secondError : firstError;
+    }
+  }
+}
+
+export function extractJsonBlock(text) {
+  if (!text || typeof text !== "string") {
+    throw new GeminiResponseError("No se recibió una respuesta en formato JSON.", {
+      statusCode: 422,
+      code: "GEMINI_INVALID_JSON",
+    });
+  }
+
+  const candidates = [];
   const jsonStart = text.indexOf("```");
   if (jsonStart !== -1) {
     const afterStart = text.slice(jsonStart + 3);
     const secondFence = afterStart.indexOf("```");
     if (secondFence !== -1) {
       const fenced = afterStart.slice(0, secondFence).replace(/^json\n?/i, "");
-      try {
-        return JSON.parse(fenced);
-      } catch {
-        // continue
-      }
+      candidates.push(fenced.trim());
     }
   }
 
   const braceStart = text.indexOf("{");
   const braceEnd = text.lastIndexOf("}");
   if (braceStart !== -1 && braceEnd !== -1 && braceEnd > braceStart) {
-    const candidate = text.slice(braceStart, braceEnd + 1);
+    candidates.push(text.slice(braceStart, braceEnd + 1));
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
     try {
-      return JSON.parse(candidate);
+      const parsed = tryParseCandidate(candidate);
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
     } catch {
-      return null;
+      // try next candidate
     }
   }
-  return null;
+
+  throw new GeminiResponseError(
+    "Gemini devolvió un JSON inválido que no se pudo reparar.",
+    { statusCode: 422, code: "GEMINI_INVALID_JSON" }
+  );
 }
 
 function escapeXml(value) {
@@ -635,9 +744,6 @@ Devuelve únicamente el JSON válido sin explicaciones adicionales.`;
 
     const { text } = await callGemini({ messages, extraPrompt: summaryPrompt, temperature: 0.4 });
     const structured = extractJsonBlock(text);
-    if (!structured) {
-      throw new Error("No se pudo obtener un JSON válido desde Gemini");
-    }
 
     const buffer = await generateDocumentBuffer(structured);
     const filename = structured.project?.name
@@ -653,7 +759,24 @@ Devuelve únicamente el JSON válido sin explicaciones adicionales.`;
     });
   } catch (error) {
     console.error("Error al finalizar BriefBuddy", error);
-    res.status(500).json({ message: error.message || "Error interno" });
+    const statusCode =
+      typeof error?.statusCode === "number"
+        ? error.statusCode
+        : typeof error?.status === "number"
+        ? error.status
+        : 500;
+
+    const responseBody = { message: error.message || "Error interno" };
+
+    if (error?.code) {
+      responseBody.code = error.code;
+    }
+
+    if (error?.details) {
+      responseBody.details = error.details;
+    }
+
+    res.status(statusCode).json(responseBody);
   }
 }
 
@@ -819,10 +942,6 @@ No incluyas texto adicional fuera del JSON.`;
 
     const { text } = await executeGeminiRequest({ contents, temperature: 0.3, maxOutputTokens: 2048 });
     const parsed = extractJsonBlock(text);
-
-    if (!parsed || typeof parsed !== "object") {
-      throw new Error("No se pudo obtener un JSON válido a partir del PDF");
-    }
 
     const assistantMessage = typeof parsed.assistantMessage === "string" ? parsed.assistantMessage.trim() : "";
     const prefilled = parsed.prefilled && typeof parsed.prefilled === "object" ? parsed.prefilled : {};
