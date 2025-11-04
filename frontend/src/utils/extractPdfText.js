@@ -1,4 +1,4 @@
-import zlib from "zlib";
+const latin1Decoder = new TextDecoder("latin1");
 
 function decodeLiteralString(input) {
   let result = "";
@@ -136,22 +136,51 @@ function readArrayLiterals(text, startIndex) {
   return null;
 }
 
-export function extractTextFromStream(streamBuffer) {
-  let buffer = streamBuffer;
+async function maybeInflate(buffer) {
+  if (!(buffer instanceof Uint8Array)) {
+    return buffer;
+  }
+
+  if (typeof DecompressionStream === "undefined") {
+    return buffer;
+  }
+
+  const inflateWith = async format => {
+    const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream(format));
+    const arrayBuffer = await new Response(stream).arrayBuffer();
+    return new Uint8Array(arrayBuffer);
+  };
+
+  try {
+    return await inflateWith("deflate");
+  } catch (error) {
+    try {
+      return await inflateWith("deflate-raw");
+    } catch (innerError) {
+      return buffer;
+    }
+  }
+}
+
+async function extractTextFromStreamBytes(streamBytes) {
+  if (!(streamBytes instanceof Uint8Array) || streamBytes.length === 0) {
+    return "";
+  }
+
+  let buffer = streamBytes;
   if (buffer[0] === 0x0d && buffer[1] === 0x0a) {
-    buffer = buffer.slice(2);
+    buffer = buffer.subarray(2);
   } else if (buffer[0] === 0x0a) {
-    buffer = buffer.slice(1);
+    buffer = buffer.subarray(1);
   }
 
   let data = buffer;
-  try {
-    data = zlib.inflateSync(buffer);
-  } catch (error) {
-    // ignore - the stream might not be compressed
+  const inflated = await maybeInflate(buffer);
+  if (inflated && inflated.length > 0) {
+    data = inflated;
   }
 
-  const text = data.toString("latin1");
+  const text = latin1Decoder.decode(data);
   const segments = [];
 
   for (let i = 0; i < text.length; i += 1) {
@@ -202,27 +231,29 @@ export function extractTextFromStream(streamBuffer) {
   return segments.join("\n").trim();
 }
 
-export async function pdfParse(buffer) {
-  if (!buffer || !Buffer.isBuffer(buffer)) {
-    throw new TypeError("pdfParse requiere un Buffer válido");
+export async function extractPdfTextFromBytes(bytes) {
+  if (!(bytes instanceof Uint8Array)) {
+    throw new TypeError("extractPdfTextFromBytes requiere un Uint8Array válido");
   }
 
+  const text = latin1Decoder.decode(bytes);
   const segments = [];
   let offset = 0;
-  while (offset < buffer.length) {
-    const streamIndex = buffer.indexOf("stream", offset, "latin1");
+
+  while (offset < text.length) {
+    const streamIndex = text.indexOf("stream", offset);
     if (streamIndex === -1) {
       break;
     }
 
     const streamStart = streamIndex + 6;
-    const endStreamIndex = buffer.indexOf("endstream", streamStart, "latin1");
+    const endStreamIndex = text.indexOf("endstream", streamStart);
     if (endStreamIndex === -1) {
       break;
     }
 
-    const slice = buffer.slice(streamStart, endStreamIndex);
-    const extracted = extractTextFromStream(slice);
+    const slice = bytes.subarray(streamStart, endStreamIndex);
+    const extracted = await extractTextFromStreamBytes(slice);
     if (extracted) {
       segments.push(extracted);
     }
@@ -230,12 +261,17 @@ export async function pdfParse(buffer) {
     offset = endStreamIndex + 9;
   }
 
-  const text = segments.join("\n\n").replace(/[\u0000\x00]+/g, "").trim();
-
-  return {
-    text,
-    numPages: null,
-  };
+  return segments.join("\n\n").replace(/[\u0000\x00]+/g, "").trim();
 }
 
-export default pdfParse;
+export async function extractPdfText(file) {
+  if (!file || typeof file.arrayBuffer !== "function") {
+    throw new TypeError("extractPdfText requiere un archivo válido");
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  return extractPdfTextFromBytes(bytes);
+}
+
+export default extractPdfText;

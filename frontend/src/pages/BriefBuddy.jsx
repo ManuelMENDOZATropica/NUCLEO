@@ -1,5 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 
+import extractPdfText from "../utils/extractPdfText";
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 function buildApiUrl(path = "") {
@@ -217,15 +219,6 @@ export default function BriefBuddy() {
 
   const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-  const readFileAsDataUrl = file =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
-      reader.onabort = () => reject(new Error("La lectura del archivo fue cancelada"));
-      reader.readAsDataURL(file);
-    });
-
   const formattedMessages = useMemo(
     () =>
       messages.map(msg => ({
@@ -274,11 +267,17 @@ export default function BriefBuddy() {
     scrollToBottom();
 
     try {
-      const dataUrl = await readFileAsDataUrl(file);
+      const extractedText = await extractPdfText(file);
+      if (!extractedText) {
+        throw new Error(
+          "No se encontró texto seleccionable en el PDF. Comparte otro archivo o proporciona los datos manualmente."
+        );
+      }
+
       const response = await fetch(buildApiUrl("/api/brief-buddy/prefill"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, fileData: dataUrl }),
+        body: JSON.stringify({ fileName: file.name, extractedText }),
       });
 
       if (!response.ok) {
