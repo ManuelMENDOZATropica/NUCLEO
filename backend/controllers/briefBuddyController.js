@@ -147,6 +147,26 @@ async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputToke
 
   const candidates = json.candidates || [];
   const primary = candidates[0];
+  const safetyRatings = [
+    ...(Array.isArray(promptFeedback?.safetyRatings) ? promptFeedback.safetyRatings : []),
+    ...(Array.isArray(primary?.safetyRatings) ? primary.safetyRatings : []),
+  ];
+
+  const blockedSafetyRating = safetyRatings.find(rating => rating?.blocked);
+
+  if (blockedSafetyRating) {
+    throw new GeminiResponseError(
+      "Gemini bloqueó el contenido del PDF por políticas de seguridad. Revisa el documento e inténtalo nuevamente.",
+      {
+        statusCode: 422,
+        code: `GEMINI_SAFETY_${blockedSafetyRating.category || "BLOCKED"}`,
+        details: {
+          category: blockedSafetyRating.category,
+          probability: blockedSafetyRating.probability,
+        },
+      }
+    );
+  }
 
   if (!primary) {
     throw new GeminiResponseError(
@@ -162,22 +182,33 @@ async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputToke
     );
   }
 
-  if (!primary.content || !Array.isArray(primary.content.parts)) {
+  const contentParts = Array.isArray(primary?.content?.parts) ? primary.content.parts : [];
+
+  if (contentParts.length === 0) {
     throw new GeminiResponseError(
-      "La respuesta de Gemini no contiene contenido utilizable.",
-      { statusCode: 422, code: "GEMINI_EMPTY_CONTENT" }
+      "No pudimos leer texto aprovechable del PDF. Asegúrate de que el archivo contenga texto legible (no solo imágenes o escaneos) y vuelve a intentarlo.",
+      {
+        statusCode: 422,
+        code: "GEMINI_EMPTY_CONTENT",
+        details: { finishReason: primary.finishReason || null },
+      }
     );
   }
 
-  const textParts = primary.content.parts
+  const textParts = contentParts
     .map(part => (typeof part.text === "string" ? part.text : ""))
+    .filter(text => text.trim().length > 0)
     .join("")
     .trim();
 
   if (!textParts) {
     throw new GeminiResponseError(
       "Gemini no encontró información aprovechable en el PDF. Verifica el documento y vuelve a intentarlo.",
-      { statusCode: 422, code: "GEMINI_NO_TEXT_PARTS" }
+      {
+        statusCode: 422,
+        code: "GEMINI_NO_TEXT_PARTS",
+        details: { finishReason: primary.finishReason || null },
+      }
     );
   }
 
