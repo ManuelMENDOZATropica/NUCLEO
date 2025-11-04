@@ -71,7 +71,7 @@ export class GeminiResponseError extends Error {
   }
 }
 
-async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputTokens = 1024 }) {
+export async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputTokens = 1024 }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY no está configurada");
@@ -181,6 +181,17 @@ async function executeGeminiRequest({ contents, temperature = 0.7, maxOutputToke
     throw new GeminiResponseError(
       "Gemini detuvo la respuesta por políticas de seguridad. Revisa el contenido del PDF y vuelve a intentarlo.",
       { statusCode: 422, code: "GEMINI_FINISH_SAFETY" }
+    );
+  }
+
+  if (primary.finishReason === "MAX_TOKENS") {
+    throw new GeminiResponseError(
+      "El PDF es demasiado largo y superó el límite de tokens permitido por Gemini. Reduce el documento e inténtalo nuevamente.",
+      {
+        statusCode: 413,
+        code: "GEMINI_MAX_TOKENS",
+        details: { finishReason: primary.finishReason },
+      }
     );
   }
 
