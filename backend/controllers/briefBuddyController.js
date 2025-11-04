@@ -661,31 +661,17 @@ export async function prefillBriefFromPdf(req, res) {
   try {
     const fileName = typeof req.body?.fileName === "string" ? req.body.fileName : "Documento";
     const rawData = typeof req.body?.fileData === "string" ? req.body.fileData : "";
+    const providedText = typeof req.body?.extractedText === "string" ? req.body.extractedText : "";
+    const trimmedText = providedText.trim();
 
-    if (!rawData) {
-      return res.status(400).json({ message: "Se requiere el archivo en formato base64" });
+    if (!trimmedText && !rawData) {
+      return res
+        .status(400)
+        .json({ message: "Se requiere el texto extraído del PDF o el archivo en formato base64" });
     }
 
-    const commaIndex = rawData.indexOf(",");
-    const base64Payload = (commaIndex !== -1 ? rawData.slice(commaIndex + 1) : rawData).trim();
-    let buffer;
-    try {
-      buffer = Buffer.from(base64Payload, "base64");
-    } catch (error) {
-      return res.status(400).json({ message: "No se pudo decodificar el archivo proporcionado" });
-    }
-
-    if (!buffer || buffer.length === 0) {
-      return res.status(400).json({ message: "El archivo está vacío" });
-    }
-
-    if (buffer.length > MAX_PDF_BYTES) {
-      return res.status(400).json({ message: "El PDF supera el tamaño máximo permitido (8 MB)" });
-    }
-
-    const signature = buffer.slice(0, 4).toString("utf8");
-    if (!signature.includes("%PDF")) {
-      return res.status(400).json({ message: "El archivo proporcionado no parece ser un PDF válido" });
+    if (providedText && !trimmedText) {
+      return res.status(422).json({ message: "El texto extraído proporcionado está vacío" });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -693,16 +679,44 @@ export async function prefillBriefFromPdf(req, res) {
       throw new Error("GEMINI_API_KEY no está configurada");
     }
 
-    const { text: extractedText } = await pdfParse(buffer);
+    let extractedText = trimmedText;
 
     if (!extractedText) {
-      throw new GeminiResponseError(
-        "No pudimos extraer texto utilizable del PDF. Verifica que el documento contenga texto seleccionable u ofrece una versión con OCR.",
-        {
-          statusCode: 422,
-          code: "PDF_PARSE_EMPTY",
-        }
-      );
+      const commaIndex = rawData.indexOf(",");
+      const base64Payload = (commaIndex !== -1 ? rawData.slice(commaIndex + 1) : rawData).trim();
+      let buffer;
+      try {
+        buffer = Buffer.from(base64Payload, "base64");
+      } catch (error) {
+        return res.status(400).json({ message: "No se pudo decodificar el archivo proporcionado" });
+      }
+
+      if (!buffer || buffer.length === 0) {
+        return res.status(400).json({ message: "El archivo está vacío" });
+      }
+
+      if (buffer.length > MAX_PDF_BYTES) {
+        return res.status(400).json({ message: "El PDF supera el tamaño máximo permitido (8 MB)" });
+      }
+
+      const signature = buffer.slice(0, 4).toString("utf8");
+      if (!signature.includes("%PDF")) {
+        return res.status(400).json({ message: "El archivo proporcionado no parece ser un PDF válido" });
+      }
+
+      const { text } = await pdfParse(buffer);
+
+      if (!text) {
+        throw new GeminiResponseError(
+          "No pudimos extraer texto utilizable del PDF. Verifica que el documento contenga texto seleccionable u ofrece una versión con OCR.",
+          {
+            statusCode: 422,
+            code: "PDF_PARSE_EMPTY",
+          }
+        );
+      }
+
+      extractedText = text;
     }
 
     const truncatedText = extractedText.length > 80000
