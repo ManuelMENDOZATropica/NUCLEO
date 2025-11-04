@@ -64,7 +64,79 @@ function decodeLiteralString(input) {
   return result;
 }
 
-function extractTextFromStream(streamBuffer) {
+function readLiteral(text, startIndex) {
+  let index = startIndex + 1;
+  let depth = 0;
+  let literal = "";
+
+  while (index < text.length) {
+    const char = text[index];
+
+    if (char === "\\") {
+      if (index + 1 < text.length) {
+        literal += char + text[index + 1];
+        index += 2;
+      } else {
+        literal += char;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (char === "(") {
+      depth += 1;
+      literal += char;
+      index += 1;
+      continue;
+    }
+
+    if (char === ")") {
+      if (depth === 0) {
+        return { literal, endIndex: index + 1 };
+      }
+
+      depth -= 1;
+      literal += char;
+      index += 1;
+      continue;
+    }
+
+    literal += char;
+    index += 1;
+  }
+
+  return null;
+}
+
+function readArrayLiterals(text, startIndex) {
+  const strings = [];
+  let index = startIndex + 1;
+
+  while (index < text.length) {
+    const char = text[index];
+
+    if (char === "(") {
+      const literalResult = readLiteral(text, index);
+      if (!literalResult) {
+        return null;
+      }
+
+      strings.push(decodeLiteralString(literalResult.literal));
+      index = literalResult.endIndex;
+      continue;
+    }
+
+    if (char === "]") {
+      return { strings, endIndex: index + 1 };
+    }
+
+    index += 1;
+  }
+
+  return null;
+}
+
+export function extractTextFromStream(streamBuffer) {
   let buffer = streamBuffer;
   if (buffer[0] === 0x0d && buffer[1] === 0x0a) {
     buffer = buffer.slice(2);
@@ -80,20 +152,54 @@ function extractTextFromStream(streamBuffer) {
   }
 
   const text = data.toString("latin1");
-  const matches = text.match(/\((?:\\\(|\\\)|\\\\|\\n|\\r|\\t|\\b|\\f|\\[0-7]{1,3}|[^()\\])*\)[\s]*[TJ]/g);
+  const segments = [];
 
-  if (!matches) {
-    return "";
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (char === "(") {
+      const literalResult = readLiteral(text, i);
+      if (!literalResult) {
+        continue;
+      }
+
+      const { literal, endIndex } = literalResult;
+      let commandIndex = endIndex;
+
+      while (commandIndex < text.length && /\s/.test(text[commandIndex])) {
+        commandIndex += 1;
+      }
+
+      if (text.slice(commandIndex, commandIndex + 2) === "Tj") {
+        segments.push(decodeLiteralString(literal));
+      }
+
+      i = endIndex - 1;
+      continue;
+    }
+
+    if (char === "[") {
+      const arrayResult = readArrayLiterals(text, i);
+      if (!arrayResult) {
+        continue;
+      }
+
+      const { strings, endIndex } = arrayResult;
+      let commandIndex = endIndex;
+
+      while (commandIndex < text.length && /\s/.test(text[commandIndex])) {
+        commandIndex += 1;
+      }
+
+      if (text.slice(commandIndex, commandIndex + 2) === "TJ" && strings.length > 0) {
+        segments.push(strings.join(""));
+      }
+
+      i = endIndex - 1;
+    }
   }
 
-  return matches
-    .map(match => {
-      const literal = match.replace(/[TJ\s]+$/g, "");
-      const content = literal.slice(1, -1);
-      return decodeLiteralString(content);
-    })
-    .join("\n")
-    .trim();
+  return segments.join("\n").trim();
 }
 
 export async function pdfParse(buffer) {
