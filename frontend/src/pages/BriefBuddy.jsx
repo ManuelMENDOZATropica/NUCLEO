@@ -1,7 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
 
-import extractPdfText from "../utils/extractPdfText";
-
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 function buildApiUrl(path = "") {
@@ -9,6 +7,50 @@ function buildApiUrl(path = "") {
     return `${API_BASE_URL}/${path}`;
   }
   return `${API_BASE_URL}${path}`;
+}
+
+const PROGRESS_REGEX = /@--\s*PROGRESS:\s*(\{[\s\S]*?\})\s*--/i;
+
+function stripProgressComment(text) {
+  if (!text) return "";
+  return text.replace(PROGRESS_REGEX, "").trim();
+}
+
+function extractProgress(text) {
+  if (!text) return null;
+  const match = text.match(PROGRESS_REGEX);
+  if (!match) return null;
+  try {
+    const data = JSON.parse(match[1]);
+    return {
+      complete: Array.isArray(data.complete) ? data.complete : [],
+      missing: Array.isArray(data.missing) ? data.missing : [],
+    };
+  } catch (error) {
+    console.warn("No se pudo parsear el progreso", error);
+    return null;
+  }
+}
+
+function buildProgressComment({ sections = {}, missing = [] }) {
+  const complete = Object.entries(sections)
+    .filter(([_, value]) => {
+      if (!value) return false;
+      if (Array.isArray(value)) {
+        return value.some(item => typeof item === "string" && item.trim());
+      }
+      if (typeof value === "object") {
+        return Object.values(value).some(val => {
+          if (typeof val === "string") return val.trim().length > 0;
+          if (Array.isArray(val)) return val.length > 0;
+          return Boolean(val);
+        });
+      }
+      return typeof value === "string" ? value.trim().length > 0 : Boolean(value);
+    })
+    .map(([key]) => key);
+
+  return `@-- PROGRESS: ${JSON.stringify({ complete, missing })} --`;
 }
 
 const INITIAL_ASSISTANT_MESSAGE =
@@ -222,8 +264,9 @@ export default function BriefBuddy() {
   const formattedMessages = useMemo(
     () =>
       messages.map(msg => ({
-        ...msg,
+        id: msg.id,
         role: msg.role === "assistant" ? "assistant" : "user",
+        content: msg.content,
       })),
     [messages]
   );
@@ -246,7 +289,7 @@ export default function BriefBuddy() {
     if (!file) return;
 
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError("El PDF supera el límite de 8 MB permitido.");
+      setError("El archivo supera el límite de 8 MB permitido.");
       event.target.value = "";
       return;
     }
@@ -261,69 +304,79 @@ export default function BriefBuddy() {
     const userMessage = {
       id: `user-${timestamp}`,
       role: "user",
-      content: `Acabo de subir el PDF "${file.name}" para que lo analices y completes el brief automáticamente.`,
+      content: `Acabo de subir el archivo "${file.name}" para que lo analices y completes el brief automáticamente.`,
     };
-    setMessages(prev => [...prev, userMessage]);
+    const assistantPlaceholder = {
+      id: `assistant-${timestamp + 1}`,
+      role: "assistant",
+      content: "",
+    };
+
+    setMessages(prev => [...prev, userMessage, assistantPlaceholder]);
     scrollToBottom();
 
     try {
-      const extractedText = await extractPdfText(file);
-      if (!extractedText) {
-        throw new Error(
-          "No se encontró texto seleccionable en el PDF. Comparte otro archivo o proporciona los datos manualmente."
-        );
-      }
+      const formData = new FormData();
+      formData.append("file", file);
 
-      const response = await fetch(buildApiUrl("/api/brief-buddy/prefill"), {
+      const response = await fetch(buildApiUrl("/api/upload"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, extractedText }),
+        body: formData,
       });
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
-        const message = errJson.message || "No se pudo analizar el PDF";
+        const message = errJson.message || "No se pudo analizar el archivo";
         throw new Error(message);
       }
 
       const json = await response.json();
-      const assistantText = json.assistantMessage && json.assistantMessage.trim()
-        ? json.assistantMessage.trim()
-        : "He revisado el documento, pero no pude extraer información clara. ¿Podrías compartir más detalles?";
+      const brief = json.brief || {};
+      const summary = Array.isArray(brief.summary) ? brief.summary.filter(Boolean) : [];
+      const missing = Array.isArray(brief.missing) ? brief.missing.filter(Boolean) : [];
+      const progressComment = buildProgressComment(brief);
 
-      const assistantMessage = {
-        id: `assistant-${timestamp + 1}`,
-        role: "assistant",
-        content: assistantText,
-      };
+      const messageParts = [
+        `He analizado "${file.name}" y generé un borrador estructurado del brief.`,
+      ];
 
-      setMessages(prev => [...prev, assistantMessage]);
+      if (summary.length) {
+        messageParts.push(`Highlights:\n- ${summary.map(item => item.trim()).join("\n- ")}`);
+      }
+
+      if (missing.length) {
+        messageParts.push(`Pendientes detectados (${missing.length}):\n- ${missing.join("\n- ")}`);
+      } else {
+        messageParts.push("No se detectaron pendientes críticos en el documento.");
+      }
+
+      messageParts.push("¿Qué otra información quieres agregar?");
+
+      const assistantText = `${messageParts.join("\n\n")}\n\n${progressComment}`;
+
+      setMessages(prev =>
+        prev.map(msg => (msg.id === assistantPlaceholder.id ? { ...msg, content: assistantText } : msg))
+      );
+      setPendingQuestions(missing);
+      setLastUpload({ fileName: file.name, missingCount: missing.length });
       scrollToBottom();
-
-      const pending = Array.isArray(json.missingQuestions)
-        ? json.missingQuestions.filter(item => typeof item === "string" && item.trim().length > 0)
-        : [];
-
-      setPendingQuestions(pending);
-      setLastUpload({
-        fileName: file.name,
-        missingCount: pending.length,
-      });
     } catch (err) {
-      console.error("Error al procesar el PDF con pdf.js", err);
+      console.error("Error al procesar el archivo", err);
       const message = err && typeof err.message === "string" && err.message.trim().length > 0
         ? err.message.trim()
-        : "No se pudo procesar el PDF con pdf.js";
+        : "No se pudo procesar el archivo";
       setError(message);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content:
-            "No pude analizar el PDF. ¿Podrías intentar con otro archivo o compartir la información clave aquí mismo?",
-        },
-      ]);
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === assistantPlaceholder.id
+            ? {
+                ...msg,
+                content:
+                  "No pude analizar el documento. ¿Podrías intentar con otro archivo o compartir la información clave aquí mismo?",
+              }
+            : msg
+        )
+      );
       scrollToBottom();
     } finally {
       setIsUploading(false);
@@ -338,39 +391,99 @@ export default function BriefBuddy() {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
 
-    const newMessages = [
-      ...messages,
-      { id: `user-${Date.now()}`, role: "user", content: trimmed },
-    ];
-    setMessages(newMessages);
+    const userMessage = { id: `user-${Date.now()}`, role: "user", content: trimmed };
+    const assistantMessage = { id: `assistant-${Date.now() + 1}`, role: "assistant", content: "" };
+    const payloadMessages = [...messages, userMessage];
+
+    setFinalInfo(null);
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
     setInput("");
     setIsLoading(true);
     setError("");
+    scrollToBottom();
 
     try {
-      const response = await fetch(buildApiUrl("/api/brief-buddy/chat"), {
+      const response = await fetch(buildApiUrl("/api/chat/stream"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages.map(({ role, content }) => ({ role, content })) }),
+        body: JSON.stringify({
+          messages: payloadMessages.map(({ role, content }) => ({ role, content })),
+        }),
       });
 
-      if (!response.ok) {
+      if (!response.ok || !response.body) {
         throw new Error("No se pudo obtener respuesta del asistente");
       }
 
-      const json = await response.json();
-      const reply = json.reply || "";
-      const assistantMessage = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: reply.trim() || "Lo siento, no pude generar una respuesta.",
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let aggregated = "";
+      let streaming = true;
+
+      while (streaming) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const segments = buffer.split("\n\n");
+        buffer = segments.pop() || "";
+
+        for (const segment of segments) {
+          if (!segment.startsWith("data:")) continue;
+          const data = segment.slice(5).trim();
+          if (!data) continue;
+          if (data === "[DONE]") {
+            streaming = false;
+            break;
+          }
+          if (data.startsWith("{") && data.includes("error")) {
+            try {
+              const parsed = JSON.parse(data);
+              throw new Error(parsed.error || "Error en el stream");
+            } catch (err) {
+              if (err instanceof SyntaxError) {
+                aggregated += data;
+              } else {
+                throw err;
+              }
+            }
+          } else {
+            aggregated += data;
+          }
+
+          setMessages(prev =>
+            prev.map(msg => (msg.id === assistantMessage.id ? { ...msg, content: aggregated } : msg))
+          );
+          scrollToBottom();
+        }
+      }
+
+      const finalContent = aggregated.trim()
+        ? aggregated
+        : "Lo siento, no pude generar una respuesta en este momento.";
+
+      setMessages(prev =>
+        prev.map(msg => (msg.id === assistantMessage.id ? { ...msg, content: finalContent } : msg))
+      );
       scrollToBottom();
+
+      const progress = extractProgress(finalContent);
+      if (progress) {
+        setPendingQuestions(progress.missing || []);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || "Ocurrió un error inesperado");
-      setMessages(prev => prev.slice(0, -1));
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === assistantMessage.id
+            ? {
+                ...msg,
+                content: "Lo siento, hubo un problema al generar la respuesta. ¿Podrías intentarlo de nuevo?",
+              }
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false);
     }
@@ -382,10 +495,10 @@ export default function BriefBuddy() {
     setError("");
 
     try {
-      const response = await fetch(buildApiUrl("/api/brief-buddy/finalize"), {
+      const response = await fetch(buildApiUrl("/api/finalize"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messages.map(({ role, content }) => ({ role, content })) }),
+        body: JSON.stringify({ history: messages.map(({ role, content }) => ({ role, content })) }),
       });
 
       if (!response.ok) {
@@ -396,6 +509,9 @@ export default function BriefBuddy() {
 
       const json = await response.json();
       setFinalInfo(json);
+      if (Array.isArray(json?.brief?.missing)) {
+        setPendingQuestions(json.brief.missing);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || "No se pudo completar el brief");
@@ -426,7 +542,7 @@ export default function BriefBuddy() {
         <div style={pageStyles.chatBody} ref={bodyRef}>
           {formattedMessages.map(message => (
             <div key={message.id} style={pageStyles.messageBubble(message.role)}>
-              {message.content}
+              {stripProgressComment(message.content)}
             </div>
           ))}
         </div>
@@ -448,7 +564,7 @@ export default function BriefBuddy() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="application/pdf"
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             style={{ display: "none" }}
             onChange={handleFileUpload}
           />
@@ -490,9 +606,30 @@ export default function BriefBuddy() {
                   ))}
                 </ul>
               )}
-              {finalInfo && !error && (
+              {finalInfo?.drive?.fileUrl && !error && (
                 <span style={pageStyles.statusText("#047857")}>
-                  Documento generado: <strong>{finalInfo.fileName}</strong>
+                  Documento generado: {" "}
+                  <a
+                    href={finalInfo.drive.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "#047857", fontWeight: 600 }}
+                  >
+                    Abrir en Google Drive
+                  </a>
+                </span>
+              )}
+              {finalInfo?.drive?.stateOfArt?.fileUrl && !error && (
+                <span style={pageStyles.statusText("#047857")}>
+                  State of Art: {" "}
+                  <a
+                    href={finalInfo.drive.stateOfArt.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "#047857", fontWeight: 600 }}
+                  >
+                    Ver documento
+                  </a>
                 </span>
               )}
             </div>
@@ -500,28 +637,28 @@ export default function BriefBuddy() {
         </footer>
       </section>
 
-      {finalInfo?.structured && (
+      {finalInfo?.brief && (
         <section style={pageStyles.transcriptSection}>
           <h3 style={pageStyles.transcriptTitle}>Resumen del brief</h3>
           <p style={{ margin: 0, fontSize: 14, color: "#475569" }}>
             Se generó un resumen estructurado con los puntos clave y se guardó automáticamente en la carpeta
             de Drive configurada.
           </p>
-          {Array.isArray(finalInfo.structured.summary) && finalInfo.structured.summary.length > 0 && (
+          {Array.isArray(finalInfo.brief.summary) && finalInfo.brief.summary.length > 0 && (
             <>
               <h4 style={{ margin: "8px 0 0", fontSize: 15, color: "#0f172a" }}>Highlights</h4>
               <ul style={pageStyles.transcriptList}>
-                {finalInfo.structured.summary.map((item, index) => (
+                {finalInfo.brief.summary.map((item, index) => (
                   <li key={`summary-${index}`}>{item}</li>
                 ))}
               </ul>
             </>
           )}
-          {Array.isArray(finalInfo.structured.pending) && finalInfo.structured.pending.length > 0 && (
+          {Array.isArray(finalInfo.brief.missing) && finalInfo.brief.missing.length > 0 && (
             <>
               <h4 style={{ margin: "8px 0 0", fontSize: 15, color: "#0f172a" }}>Pendientes</h4>
               <ul style={pageStyles.transcriptList}>
-                {finalInfo.structured.pending.map((item, index) => (
+                {finalInfo.brief.missing.map((item, index) => (
                   <li key={`pending-${index}`}>{item}</li>
                 ))}
               </ul>
