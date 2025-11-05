@@ -1,5 +1,5 @@
 import { createOpenAIClient, getOpenAIModel } from "../lib/openai.js";
-import { loadPromptContextFromFs } from "../lib/prompt.js";
+import { loadPromptContextFromFs } from "../lib/prompt-node.js";
 import { generateBriefDocx } from "../lib/docxTemplate.js";
 import {
   createDriveClient,
